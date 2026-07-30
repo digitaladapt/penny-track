@@ -56,6 +56,65 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertSame('Food', $data['category']);
     }
 
+    public function testCreateReceiptWithCustomCreatedAt(): void
+    {
+        $this->client->request('POST', '/api/receipts', [], [], [
+            'HTTP_X_API_KEY' => $this->apiKey,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'amount' => 20.00,
+            'business' => 'Old Store',
+            'category' => 'Shopping',
+            'created_at' => '2023-06-10T15:30:00+00:00',
+        ]));
+
+        $this->assertResponseStatusCodeSame(201);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertSame('Old Store', $data['business']);
+        $this->assertStringStartsWith('2023-06-10', $data['created_at']);
+    }
+
+    public function testCreateReceiptWithoutCreatedAtDefaultsToNow(): void
+    {
+        $before = new \DateTimeImmutable('-5 seconds');
+
+        $this->client->request('POST', '/api/receipts', [], [], [
+            'HTTP_X_API_KEY' => $this->apiKey,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'amount' => 12.00,
+            'business' => 'Default Time Store',
+            'category' => 'Food',
+        ]));
+
+        $this->assertResponseStatusCodeSame(201);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $createdAt = new \DateTimeImmutable($data['created_at']);
+        $this->assertGreaterThanOrEqual($before, $createdAt);
+    }
+
+    public function testUpdateReceiptWithCustomCreatedAt(): void
+    {
+        $receipt = new Receipt();
+        $receipt->setAmount('10.00');
+        $receipt->setBusiness('Original');
+        $receipt->setCategory('Other');
+        $receipt->setCreatedAt(new \DateTimeImmutable('2022-01-01'));
+        $this->em->persist($receipt);
+        $this->em->flush();
+
+        $this->client->request('PUT', '/api/receipts/' . $receipt->getId(), [], [], [
+            'HTTP_X_API_KEY' => $this->apiKey,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'created_at' => '2023-07-20T08:00:00+00:00',
+        ]));
+
+        $this->assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertStringStartsWith('2023-07-20', $data['created_at']);
+    }
+
     public function testCreateReceiptValidationFails(): void
     {
         $this->client->request('POST', '/api/receipts', [], [], [

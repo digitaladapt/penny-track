@@ -94,4 +94,20 @@ class ReceiptTest extends TestCase
 
         $this->assertGreaterThan($originalUpdated, $receipt->getUpdatedAt());
     }
+
+    public function testPrePersistDoesNotOverwriteExistingCreatedAt(): void
+    {
+        $receipt = new Receipt();
+        $receipt->setAmount('10.00');
+        $receipt->setBusiness('Test');
+        $receipt->setCategory('Food');
+
+        $customDate = new \DateTimeImmutable('2023-01-15 14:30:00');
+        $receipt->setCreatedAt($customDate);
+
+        $receipt->onPrePersist();
+
+        $this->assertSame($customDate, $receipt->getCreatedAt());
+        $this->assertNotNull($receipt->getUpdatedAt());
+    }
 }
