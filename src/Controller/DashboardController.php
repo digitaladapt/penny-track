@@ -93,7 +93,8 @@ class DashboardController extends AbstractController
                 'date' => $dateStr,
                 'total' => $lookup[$dateStr] ?? 0,
             ];
-            $current->modify('+1 day');
+            /* modify() does not change the content of current directly, because it is DateTimeImmutable */
+            $current = $current->modify('+1 day');
         }
 
         return new JsonResponse($filled);

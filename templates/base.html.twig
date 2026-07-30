@@ -5,6 +5,38 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}Penny-Track{% endblock %}</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>💰</text></svg>">
+    <script>
+        // API Key helper for all pages
+        window.PennyTrack = {
+            getApiKey: () => localStorage.getItem('pennytrack_api_key'),
+            setApiKey: (key) => localStorage.setItem('pennytrack_api_key', key),
+            clearApiKey: () => localStorage.removeItem('pennytrack_api_key'),
+            apiFetch: (url, options = {}) => {
+                const key = window.PennyTrack.getApiKey();
+                if (!key) {
+                    window.location.href = '{{ path('app_login') }}';
+                    return Promise.reject('No API key');
+                }
+                options.headers = {
+                    ...options.headers,
+                    'X-API-Key': key,
+                    'Accept': 'application/json',
+                };
+                if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
+                    options.headers['Content-Type'] = 'application/json';
+                    options.body = JSON.stringify(options.body);
+                }
+                return fetch(url, options).then(r => {
+                    if (r.status === 401) {
+                        window.PennyTrack.clearApiKey();
+                        window.location.href = '{{ path('app_login') }}';
+                        throw new Error('Unauthorized');
+                    }
+                    return r;
+                });
+            }
+        };
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <script>
@@ -55,38 +87,6 @@
         {% block body %}{% endblock %}
     </main>
 
-    <script>
-        // API Key helper for all pages
-        window.PennyTrack = {
-            getApiKey: () => localStorage.getItem('pennytrack_api_key'),
-            setApiKey: (key) => localStorage.setItem('pennytrack_api_key', key),
-            clearApiKey: () => localStorage.removeItem('pennytrack_api_key'),
-            apiFetch: (url, options = {}) => {
-                const key = window.PennyTrack.getApiKey();
-                if (!key) {
-                    window.location.href = '{{ path('app_login') }}';
-                    return Promise.reject('No API key');
-                }
-                options.headers = {
-                    ...options.headers,
-                    'X-API-Key': key,
-                    'Accept': 'application/json',
-                };
-                if (options.body && typeof options.body === 'object' && !(options.body instanceof FormData)) {
-                    options.headers['Content-Type'] = 'application/json';
-                    options.body = JSON.stringify(options.body);
-                }
-                return fetch(url, options).then(r => {
-                    if (r.status === 401) {
-                        window.PennyTrack.clearApiKey();
-                        window.location.href = '{{ path('app_login') }}';
-                        throw new Error('Unauthorized');
-                    }
-                    return r;
-                });
-            }
-        };
-    </script>
     {% block javascripts %}{% endblock %}
 </body>
 </html>
