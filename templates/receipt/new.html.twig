@@ -1,0 +1,195 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}New Receipt - Penny-Track{% endblock %}
+
+{% block body %}
+<div class="max-w-2xl mx-auto">
+    <h1 class="text-2xl font-bold text-gray-900 mb-6">Add Receipt</h1>
+
+    <!-- Natural Language Input -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
+        <label class="block text-sm font-medium text-gray-700 mb-2">Quick Entry (Natural Language)</label>
+        <div class="flex gap-2">
+            <input type="text" id="nl-input" placeholder="I spent $45.50 on lunch at Chipotle in downtown today"
+                class="flex-1 border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+            <button id="nl-submit" class="bg-primary-600 text-white px-4 py-2.5 rounded-lg font-medium hover:bg-primary-700 transition whitespace-nowrap">
+                Parse
+            </button>
+        </div>
+        <div id="nl-status" class="mt-2 text-sm hidden"></div>
+    </div>
+
+    <div class="relative mb-6">
+        <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-gray-300"></div>
+        </div>
+        <div class="relative flex justify-center text-sm">
+            <span class="px-2 bg-gray-50 text-gray-500">or enter manually</span>
+        </div>
+    </div>
+
+    <!-- Manual Form -->
+    <form id="manual-form" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+                <input type="number" step="0.01" name="amount" required
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Business *</label>
+                <input type="text" name="business" required list="business-list"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                <datalist id="business-list"></datalist>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                <input type="text" name="category" required list="category-list"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                <datalist id="category-list"></datalist>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <input type="text" name="location" list="location-list"
+                    class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+                <datalist id="location-list"></datalist>
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
+            <input type="text" name="tags" placeholder="lunch, work, urgent"
+                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea name="notes" rows="3"
+                class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"></textarea>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+            <button type="submit" class="flex-1 bg-primary-600 text-white font-semibold py-3 rounded-lg hover:bg-primary-700 transition shadow">
+                Save Receipt
+            </button>
+            <a href="{{ path('app_dashboard') }}" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
+                Cancel
+            </a>
+        </div>
+
+        <div id="form-status" class="text-sm hidden"></div>
+    </form>
+</div>
+
+<script>
+    // Load autocomplete data
+    async function loadAutocomplete() {
+        try {
+            const [businesses, categories, locations] = await Promise.all([
+                window.PennyTrack.apiFetch('{{ path('api_autocomplete_businesses') }}').then(r => r.json()),
+                window.PennyTrack.apiFetch('{{ path('api_autocomplete_categories') }}').then(r => r.json()),
+                window.PennyTrack.apiFetch('{{ path('api_autocomplete_locations') }}').then(r => r.json()),
+            ]);
+
+            const populate = (id, items) => {
+                const dl = document.getElementById(id);
+                dl.innerHTML = items.map(i => `<option value="${i}">`).join('');
+            };
+            populate('business-list', businesses);
+            populate('category-list', categories);
+            populate('location-list', locations);
+        } catch (e) {
+            console.error('Failed to load autocomplete', e);
+        }
+    }
+    loadAutocomplete();
+
+    // Natural language submit
+    document.getElementById('nl-submit').addEventListener('click', async () => {
+        const input = document.getElementById('nl-input');
+        const status = document.getElementById('nl-status');
+        const btn = document.getElementById('nl-submit');
+        const text = input.value.trim();
+
+        if (!text) return;
+
+        btn.disabled = true;
+        btn.textContent = 'Parsing...';
+        status.className = 'mt-2 text-sm text-blue-600';
+        status.textContent = 'Sending to LLM...';
+        status.classList.remove('hidden');
+
+        try {
+            const res = await window.PennyTrack.apiFetch('{{ path('api_receipts_parse') }}', {
+                method: 'POST',
+                body: { text }
+            });
+            const data = await res.json();
+
+            if (res.ok || res.status === 202) {
+                status.className = 'mt-2 text-sm text-green-600';
+                status.textContent = data.warning || `Saved: ${data.receipt.business} - $${data.receipt.amount}`;
+                input.value = '';
+                setTimeout(() => window.location.href = '{{ path('app_dashboard') }}', 800);
+            } else {
+                status.className = 'mt-2 text-sm text-red-600';
+                status.textContent = data.errors ? Object.values(data.errors).join(', ') : 'Failed to parse';
+            }
+        } catch (e) {
+            status.className = 'mt-2 text-sm text-red-600';
+            status.textContent = 'Network error';
+        }
+
+        btn.disabled = false;
+        btn.textContent = 'Parse';
+    });
+
+    document.getElementById('nl-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('nl-submit').click();
+    });
+
+    // Manual form submit
+    document.getElementById('manual-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const form = e.target;
+        const status = document.getElementById('form-status');
+        const fd = new FormData(form);
+
+        const payload = {
+            amount: parseFloat(fd.get('amount')),
+            business: fd.get('business'),
+            category: fd.get('category'),
+            location: fd.get('location') || null,
+            tags: fd.get('tags').split(',').map(t => t.trim()).filter(Boolean),
+            notes: fd.get('notes') || null,
+        };
+
+        try {
+            const res = await window.PennyTrack.apiFetch('{{ path('api_receipts_create') }}', {
+                method: 'POST',
+                body: payload
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                status.className = 'text-sm text-green-600';
+                status.textContent = 'Receipt saved successfully!';
+                status.classList.remove('hidden');
+                form.reset();
+                setTimeout(() => window.location.href = '{{ path('app_dashboard') }}', 600);
+            } else {
+                status.className = 'text-sm text-red-600';
+                status.textContent = data.errors ? Object.values(data.errors).join(', ') : 'Failed to save';
+                status.classList.remove('hidden');
+            }
+        } catch (err) {
+            status.className = 'text-sm text-red-600';
+            status.textContent = 'Network error';
+            status.classList.remove('hidden');
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Setup - Penny-Track{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex items-center justify-center px-4">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+        <div class="text-6xl mb-4">💰</div>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Welcome to Penny-Track</h1>
+        <p class="text-gray-600 mb-6">Let's get you set up. Click below to generate your API key.</p>
+
+        <button id="setup-btn" class="w-full bg-primary-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-primary-700 transition shadow-lg">
+            Generate API Key
+        </button>
+
+        <div id="setup-result" class="hidden mt-6">
+            <div class="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <p class="text-green-800 font-semibold mb-2">Your API Key:</p>
+                <code id="api-key-display" class="block bg-white border border-green-300 rounded px-3 py-2 text-sm font-mono break-all text-green-900"></code>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">This key is stored in your browser. Keep it safe!</p>
+            <a href="{{ path('app_dashboard') }}" class="inline-block bg-primary-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-primary-700 transition">
+                Go to Dashboard →
+            </a>
+        </div>
+
+        <div id="setup-error" class="hidden mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-red-800"></div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('setup-btn').addEventListener('click', async () => {
+        const btn = document.getElementById('setup-btn');
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
+
+        try {
+            const res = await fetch('{{ path('api_auth_setup') }}', { method: 'POST' });
+            const data = await res.json();
+
+            if (res.ok && data.api_key) {
+                window.PennyTrack.setApiKey(data.api_key);
+                document.getElementById('api-key-display').textContent = data.api_key;
+                document.getElementById('setup-result').classList.remove('hidden');
+                btn.classList.add('hidden');
+            } else {
+                document.getElementById('setup-error').textContent = data.error || 'Something went wrong';
+                document.getElementById('setup-error').classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Generate API Key';
+            }
+        } catch (e) {
+            document.getElementById('setup-error').textContent = 'Network error. Please try again.';
+            document.getElementById('setup-error').classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Generate API Key';
+        }
+    });
+</script>
+{% endblock %}

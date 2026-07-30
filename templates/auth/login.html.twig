@@ -1,0 +1,72 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Login - Penny-Track{% endblock %}
+
+{% block navbar %}{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex items-center justify-center px-4">
+    <div class="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+        <div class="text-6xl mb-4">🔑</div>
+        <h1 class="text-2xl font-bold text-gray-900 mb-2">Enter Your API Key</h1>
+        <p class="text-gray-600 mb-6">Your key is stored in your browser's localStorage.</p>
+
+        <div class="space-y-4">
+            <input type="password" id="api-key-input" placeholder="Paste your API key here"
+                class="w-full border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent">
+
+            <button id="login-btn" class="w-full bg-primary-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-primary-700 transition shadow-lg">
+                Unlock
+            </button>
+        </div>
+
+        <div id="login-error" class="hidden mt-4 bg-red-50 border border-red-200 rounded-lg p-4 text-red-800 text-sm"></div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('login-btn').addEventListener('click', async () => {
+        const key = document.getElementById('api-key-input').value.trim();
+        const btn = document.getElementById('login-btn');
+        const error = document.getElementById('login-error');
+
+        if (!key) {
+            error.textContent = 'Please enter your API key';
+            error.classList.remove('hidden');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Verifying...';
+        error.classList.add('hidden');
+
+        try {
+            const res = await fetch('{{ path('api_auth_verify') }}', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: key })
+            });
+            const data = await res.json();
+
+            if (res.ok && data.valid) {
+                window.PennyTrack.setApiKey(key);
+                window.location.href = '{{ path('app_dashboard') }}';
+            } else {
+                error.textContent = 'Invalid API key. Please try again.';
+                error.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Unlock';
+            }
+        } catch (e) {
+            error.textContent = 'Network error. Please try again.';
+            error.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Unlock';
+        }
+    });
+
+    document.getElementById('api-key-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') document.getElementById('login-btn').click();
+    });
+</script>
+{% endblock %}
