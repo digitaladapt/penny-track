@@ -1,0 +1,4 @@
+# comments MUST start at the beginning of the line
+# this files lists each domain this app uses
+# each domain MUST be on its own line
+track.devgnome.com
