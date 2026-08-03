@@ -251,6 +251,13 @@ class ReceiptController extends AbstractController
         if (array_key_exists('notes', $data)) {
             $receipt->setNotes($data['notes'] ?: null);
         }
+        if (array_key_exists('created_at', $data) && !empty($data['created_at'])) {
+            try {
+                $receipt->setCreatedAt(new \DateTimeImmutable($data['created_at']));
+            } catch (\Throwable) {
+                // ignore invalid dates, default will be used
+            }
+        }
 
         return $receipt;
     }

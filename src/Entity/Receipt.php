@@ -52,7 +52,7 @@ class Receipt
     #[ORM\PrePersist]
     public function onPrePersist(): void
     {
-        $this->createdAt = new \DateTimeImmutable();
+        $this->createdAt ??= new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
     }
 
