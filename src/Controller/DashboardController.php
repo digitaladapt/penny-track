@@ -121,6 +121,7 @@ class DashboardController extends AbstractController
         $now = new \DateTimeImmutable();
         $startOfMonth = $now->modify('first day of this month midnight');
         $startOfLastMonth = $now->modify('first day of last month midnight');
+        $startOfMonthsAgo = $now->modify('first day of 3 months ago midnight');
         $endOfLastMonth = $startOfMonth;
 
         $insights = [];
@@ -152,32 +153,69 @@ class DashboardController extends AbstractController
         }
 
         // Spending velocity
-        $dayOfMonth = (int) $now->format('j');
-        $daysInMonth = (int) $now->format('t');
-        if ($dayOfMonth > 1 && $thisMonthTotal > 0) {
-            $dailyRate = $thisMonthTotal / $dayOfMonth;
-            $projected = $dailyRate * $daysInMonth;
-            $insights[] = [
-                'type' => 'info',
-                'message' => sprintf('On track to spend ~$%.2f this month', $projected),
-            ];
-        }
+        //$dayOfMonth = (int) $now->format('j');
+        //$daysInMonth = (int) $now->format('t');
+        //if ($dayOfMonth > 1 && $thisMonthTotal > 0) {
+        //    $dailyRate = $thisMonthTotal / $dayOfMonth;
+        //    $projected = $dailyRate * $daysInMonth;
+        //    $insights[] = [
+        //        'type' => 'info',
+        //        'message' => sprintf('On track to spend ~$%.2f this month', $projected),
+        //    ];
+        //}
 
         // Category anomalies
-        $categoryAverages = $this->receiptRepository->getCategoryAverages(3);
+        $categoryAverages = $this->receiptRepository->getCategoryAverages($startOfMonthsAgo, $endOfLastMonth);
         $thisMonthByCategory = $this->receiptRepository->getSpendingByCategory($startOfMonth, $now);
 
         $avgLookup = [];
         foreach ($categoryAverages as $row) {
-            $avgLookup[$row['category']] = (float) $row['total'];
+            $avgLookup[$row['category']] = [
+                'average_count' => (float)$row['average_count'],
+                'average'       => (float)$row['average'],
+            ];
         }
+
+        $projected = 0.0;
+        $covered = [];
+        foreach ($thisMonthByCategory as $row) {
+            $cat = $row['category'];
+            $total = (float)$row['total'];
+            $covered[$cat] = true;
+            // count and count can't be zero, otherwise there would be no results to report
+            if (isset($avgLookup[$cat]['average_count']) &&
+                $avgLookup[$cat]['average_count'] > $row['count']
+            ) {
+                // estimate how far we are through this month
+                // half expected transaction count
+                // half expected total amount
+                $progress = (($row['count'] / $avgLookup[$cat]['average_count']) +
+                    ($total / $avgLookup[$cat]['average_count'] * $avgLookup[$cat]['average'])
+                ) / 2;
+                // cap projection to 100%
+                $projected += $total / min($progress, 1);
+            } else {
+                // new category, do not predict more
+                $projected += $total;
+            }
+        }
+        foreach ($avgLookup as $cat => $row) {
+            if ( ! isset($covered[$cat])) {
+                // a category from the history, which has no spending in it yet
+                $projected += $row['average_count'] * $row['average'];
+            }
+        }
+        $insights[] = [
+            'type' => 'info',
+            'message' => sprintf('On track to spend ~$%.2f this month', $projected),
+        ];
 
         foreach ($thisMonthByCategory as $row) {
             $cat = $row['category'];
             $total = (float) $row['total'];
-            if (isset($avgLookup[$cat]) && $avgLookup[$cat] > 0) {
-                $ratio = $total / $avgLookup[$cat];
-                if ($ratio > 2) {
+            if (isset($avgLookup[$cat]['average']) && $avgLookup[$cat]['average'] > 0) {
+                $ratio = $total / $avgLookup[$cat]['average'] * $avgLookup[$cat]['average_count'];
+                if ($ratio > 1.25) {
                     $insights[] = [
                         'type' => 'warning',
                         'message' => sprintf('Unusually high spending in %s (%.0fx average)', $cat, $ratio),
