@@ -101,12 +101,16 @@ class DashboardController extends AbstractController
     }
 
     #[Route('/api/dashboard/top-businesses', name: 'api_dashboard_top_businesses', methods: ['GET'])]
-    public function topBusinesses(): JsonResponse
+    public function topBusinesses(Request $request): JsonResponse
     {
         $now = new \DateTimeImmutable();
         $from = $now->modify('first day of this month midnight');
 
-        $data = $this->receiptRepository->getTopBusinesses($from, $now, 5);
+        $rawLimit = (int) $request->query->get('limit', 5);
+        $allowedLimits = [5, 10, 15, 25];
+        $limit = in_array($rawLimit, $allowedLimits, true) ? $rawLimit : 5;
+
+        $data = $this->receiptRepository->getTopBusinesses($from, $now, $limit);
 
         return new JsonResponse(array_map(fn ($row) => [
             'business' => $row['business'],
@@ -148,7 +152,7 @@ class DashboardController extends AbstractController
         if (!empty($topBusinesses)) {
             $insights[] = [
                 'type' => 'info',
-                'message' => sprintf('Most visited this month: %s ($%.2f)', $topBusinesses[0]['business'], (float) $topBusinesses[0]['total']),
+                'message' => sprintf('Top spender this month: %s ($%.2f)', $topBusinesses[0]['business'], (float) $topBusinesses[0]['total']),
             ];
         }
 
@@ -220,13 +224,30 @@ class DashboardController extends AbstractController
             $cat = $row['category'];
             $total = (float) $row['total'];
             if (isset($avgLookup[$cat]['average']) && $avgLookup[$cat]['average'] > 0) {
-                $ratio = $total / ($avgLookup[$cat]['average'] * $avgLookup[$cat]['average_count']);
+                $ratio = $total / ($avgLookup[$cat]['average'] * $avgLookup[$cat]['average_count'] * $avgLookup[$cat]['months'] / $maxMonths);
                 if ($ratio > 1.25) {
                     $insights[] = [
                         'type' => 'warning',
                         'message' => sprintf('Unusually high spending in %s (%.0fx average)', $cat, $ratio),
                     ];
                 }
+            }
+        }
+
+        // New category detected — compare this month's categories against last 3 months
+        $thisMonthCats = array_column($this->receiptRepository->getSpendingByCategory($startOfMonth, $now), 'category');
+        $endOfLastMonth = (clone $startOfMonth)->modify('-1 second');
+
+        $pastCategoriesData = $this->receiptRepository->getSpendingByCategory($startOfMonthsAgo, $endOfLastMonth);
+        $pastCats = array_column($pastCategoriesData, 'category');
+
+        $newCategories = array_diff($thisMonthCats, $pastCats);
+        if (!empty($newCategories)) {
+            foreach ($newCategories as $cat) {
+                $insights[] = [
+                    'type' => 'info',
+                    'message' => sprintf('New category this month: %s', $cat),
+                ];
             }
         }
 
