@@ -214,7 +214,7 @@ class DashboardController extends AbstractController
             $cat = $row['category'];
             $total = (float) $row['total'];
             if (isset($avgLookup[$cat]['average']) && $avgLookup[$cat]['average'] > 0) {
-                $ratio = $total / $avgLookup[$cat]['average'] * $avgLookup[$cat]['average_count'];
+                $ratio = $total / ($avgLookup[$cat]['average'] * $avgLookup[$cat]['average_count']);
                 if ($ratio > 1.25) {
                     $insights[] = [
                         'type' => 'warning',
