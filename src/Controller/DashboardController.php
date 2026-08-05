@@ -57,9 +57,10 @@ class DashboardController extends AbstractController
     #[Route('/api/dashboard/spending-by-category', name: 'api_dashboard_spending_by_category', methods: ['GET'])]
     public function spendingByCategory(Request $request): JsonResponse
     {
+        $months = max(1, min(12, (int) $request->query->get('months', 1)));
         $now = new \DateTimeImmutable();
         $startOfMonth = $now->modify('first day of this month midnight');
-        $startOfLastMonth = $now->modify('first day of last month midnight');
+        $startOfLastMonth = $now->modify('first day of -' . ($months - 1) . ' months midnight');
         $endOfLastMonth = (clone $startOfMonth)->modify('-1 second');
 
         // When comparison=true, return separate this_month and last_month breakdowns
@@ -159,6 +160,7 @@ class DashboardController extends AbstractController
         $now = new \DateTimeImmutable();
         $startOfMonth = $now->modify('first day of this month midnight');
         $startOfLastMonth = $now->modify('first day of last month midnight');
+        $startOfMonthsAgo = $now->modify('first day of 3 months ago midnight');
         $endOfLastMonth = $startOfMonth;
 
         $insights = [];
@@ -198,7 +200,7 @@ class DashboardController extends AbstractController
             ];
         }
 
-        // Spending velocity
+        // Spending velocity v1.2 update
         $dayOfMonth = (int) $now->format('j');
         $daysInMonth = (int) $now->format('t');
         $thisMonthCount = $this->receiptRepository->getCountInRange($startOfMonth, $now);
@@ -207,13 +209,58 @@ class DashboardController extends AbstractController
             $projected = $dailyRate * $daysInMonth;
             $insights[] = [
                 'type' => 'info',
-                'message' => sprintf('On track to spend ~$%.2f this month', $projected),
+                'message' => sprintf('On track to spend ~$%.2f this month (v1.2)', $projected),
             ];
         }
 
+        // Spending velocity v2.0 redesign
+        $categoryAverages = $this->receiptRepository->getCategoryAverages($startOfMonthsAgo, $endOfLastMonth);
+        $thisMonthByCategory = $this->receiptRepository->getSpendingByCategory($startOfMonth, $now);
+
+        $avgLookup = [];
+        foreach ($categoryAverages as $row) {
+            $avgLookup[$row['category']] = [
+                'average_count' => (float)$row['average_count'],
+                'average'       => (float)$row['average'],
+            ];
+        }
+
+        $projected = 0.0;
+        $covered = [];
+        foreach ($thisMonthByCategory as $row) {
+            $cat = $row['category'];
+            $total = (float)$row['total'];
+            $covered[$cat] = true;
+            // count and count can't be zero, otherwise there would be no results to report
+            if (isset($avgLookup[$cat]['average_count']) &&
+                $avgLookup[$cat]['average_count'] > $row['count']
+            ) {
+                // estimate how far we are through this month
+                // half expected transaction count
+                // half expected total amount
+                $progress = (($row['count'] / $avgLookup[$cat]['average_count']) +
+                    ($total / $avgLookup[$cat]['average_count'] * $avgLookup[$cat]['average'])
+                ) / 2;
+                // cap projection to 100%
+                $projected += $total / min($progress, 1);
+            } else {
+                // new category, do not predict more
+                $projected += $total;
+            }
+        }
+        foreach ($avgLookup as $cat => $row) {
+            if ( ! isset($covered[$cat])) {
+                // a category from the history, which has no spending in it yet
+                $projected += $row['average_count'] * $row['average'];
+            }
+        }
+        $insights[] = [
+            'type' => 'info',
+            'message' => sprintf('On track to spend ~$%.2f this month (v2.0)', $projected),
+        ];
+
         // Category anomalies
         $categoryMonthlyAverages = $this->receiptRepository->getCategoryMonthlyAverages(3);
-        $thisMonthByCategory = $this->receiptRepository->getSpendingByCategory($startOfMonth, $now);
 
         $avgLookup = [];
         foreach ($categoryMonthlyAverages as $row) {

@@ -133,7 +133,7 @@ class ReceiptRepositoryTest extends KernelTestCase
             $r->setBusiness("NowBiz$i");
             $r->setCategory('Food');
             $date = clone $now;
-            $date = $date->modify("+{$i} days midnight");
+            $date = $date->modify("-{$i} minutes"); // do not put receipts in the future
             $r->setCreatedAt($date);
             $this->em->persist($r);
         }

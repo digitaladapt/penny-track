@@ -23,6 +23,7 @@ doctrine:
         dql:
             string_functions:
                 DATE: DoctrineExtensions\Query\Sqlite\Date
+                STRFTIME: DoctrineExtensions\Query\Sqlite\StrfTime
 
 when@test:
     doctrine:

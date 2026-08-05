@@ -107,7 +107,7 @@ class ReceiptRepository extends ServiceEntityRepository
     public function getSpendingByCategory(\DateTimeInterface $from, \DateTimeInterface $to): array
     {
         return $this->createQueryBuilder('r')
-            ->select('r.category, SUM(r.amount) as total')
+            ->select('r.category, SUM(r.amount) as total, COUNT(r.id) as count')
             ->where('r.createdAt >= :from')
             ->andWhere('r.createdAt <= :to')
             ->groupBy('r.category')
@@ -156,13 +156,10 @@ class ReceiptRepository extends ServiceEntityRepository
     /**
      * @return array<int, array{category: string, total: float}>
      */
-    public function getCategoryAverages(int $months = 3): array
+    public function getCategoryAverages(\DateTimeInterface $from, \DateTimeInterface $to): array
     {
-        $from = new \DateTimeImmutable("-{$months} months");
-        $to = new \DateTimeImmutable();
-
         return $this->createQueryBuilder('r')
-            ->select('r.category, AVG(r.amount) as total')
+            ->select('r.category, AVG(r.amount) as average, (COUNT(r.id) / COUNT(DISTINCT STRFTIME(\'%Y-%m\', r.createdAt))) as average_count')
             ->where('r.createdAt >= :from')
             ->andWhere('r.createdAt <= :to')
             ->groupBy('r.category')
