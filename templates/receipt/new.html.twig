@@ -158,7 +158,8 @@
     });
 
     // Manual form submit
-    document.getElementById('manual-form').addEventListener('submit', async (e) => {
+    const manualForm = document.getElementById('manual-form');
+    manualForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target;
         const status = document.getElementById('form-status');
@@ -199,5 +200,19 @@
             status.classList.remove('hidden');
         }
     });
+
+    // Pre-fill datetime-local with current local time
+    function setDefaultDateTime() {
+        const now = new Date();
+        const offset = now.getTimezoneOffset();
+        const local = new Date(now.getTime() - offset * 60000);
+        const input = document.querySelector('input[name="created_at"]');
+        if (input) {
+            input.value = local.toISOString().slice(0, 16); // YYYY-MM-DDTHH:mm
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', setDefaultDateTime);
+    manualForm.onreset = () => setTimeout(setDefaultDateTime, 0);
 </script>
 {% endblock %}

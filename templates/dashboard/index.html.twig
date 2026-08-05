@@ -48,7 +48,15 @@
     </div>
 
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-        <h3 class="text-sm font-semibold text-gray-700 mb-4">Top Businesses</h3>
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-semibold text-gray-700">Top Businesses</h3>
+            <select id="top-businesses-limit" class="text-xs border rounded-md px-2 py-1 bg-white">
+                <option value="5" selected>Show 5</option>
+                <option value="10">Show 10</option>
+                <option value="15">Show 15</option>
+                <option value="25">Show 25</option>
+            </select>
+        </div>
         <div class="h-64">
             <canvas id="business-chart"></canvas>
         </div>
@@ -58,7 +66,15 @@
     <div>
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold text-gray-900">Recent Transactions</h2>
-            <a href="{{ path('app_receipt_new') }}" class="text-primary-600 text-sm font-medium hover:underline">+ Add New</a>
+            <div class="flex items-center gap-3">
+                <select id="recent-transactions-limit" class="text-xs border rounded-md px-2 py-1 bg-white">
+                    <option value="10" selected>Show 10</option>
+                    <option value="25">Show 25</option>
+                    <option value="50">Show 50</option>
+                    <option value="100">Show 100</option>
+                </select>
+                <a href="{{ path('app_receipt_new') }}" class="text-primary-600 text-sm font-medium hover:underline">+ Add New</a>
+            </div>
         </div>
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
@@ -83,20 +99,38 @@
 
 <script>
     let categoryChart, trendChart, businessChart;
+    let allReceipts = [];
 
     const formatCurrency = (n) => '$' + parseFloat(n).toFixed(2);
     const formatDate = (iso) => new Date(iso).toLocaleDateString();
 
+    function getTopBusinessesLimit() {
+        return parseInt(localStorage.getItem('pennyTrack_topBusinessesLimit') || '5', 10);
+    }
+
+    function getRecentTransactionsLimit() {
+        return parseInt(localStorage.getItem('pennyTrack_recentTransactionsLimit') || '10', 10);
+    }
+
     async function loadDashboard() {
         try {
-            const [summary, categories, trends, businesses, insights, receipts] = await Promise.all([
+            const topBusinessesLimit = getTopBusinessesLimit();
+            const [summary, categoryData, trends, businesses, insights, receipts] = await Promise.all([
                 window.PennyTrack.apiFetch('{{ path('api_dashboard_summary') }}').then(r => r.json()),
-                window.PennyTrack.apiFetch('{{ path('api_dashboard_spending_by_category') }}').then(r => r.json()),
+                window.PennyTrack.apiFetch(`{{ path('api_dashboard_spending_by_category') }}?comparison=true`).then(r => r.json()),
                 window.PennyTrack.apiFetch('{{ path('api_dashboard_spending_over_time') }}').then(r => r.json()),
-                window.PennyTrack.apiFetch('{{ path('api_dashboard_top_businesses') }}').then(r => r.json()),
+                window.PennyTrack.apiFetch(`{{ path('api_dashboard_top_businesses') }}?limit=${topBusinessesLimit}`).then(r => r.json()),
                 window.PennyTrack.apiFetch('{{ path('api_dashboard_insights') }}').then(r => r.json()),
                 window.PennyTrack.apiFetch('{{ path('api_receipts_list') }}?limit=100').then(r => r.json()),
             ]);
+
+            allReceipts = receipts.data;
+
+            // Set top businesses limit dropdown to stored value
+            const topBizSelect = document.getElementById('top-businesses-limit');
+            if (topBizSelect) {
+                topBizSelect.value = String(topBusinessesLimit);
+            }
 
             // Summary
             document.getElementById('summary-this-month').textContent = formatCurrency(summary.this_month_total);
@@ -127,22 +161,31 @@
                 container.classList.remove('hidden');
             }
 
-            // Category Chart
+            // Category Chart — grouped bar chart comparing this month vs last month
             if (categoryChart) categoryChart.destroy();
+            const categories = categoryData.this_month.map(c => c.category);
+            const thisMonthTotals = categoryData.this_month.map(c => c.total);
+            const lastMonthTotals = categoryData.last_month.map(c => c.total);
+
             categoryChart = new Chart(document.getElementById('category-chart'), {
-                type: 'doughnut',
+                type: 'bar',
                 data: {
-                    labels: categories.map(c => c.category),
-                    datasets: [{
-                        data: categories.map(c => c.total),
-                        backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6b7280'],
-                        borderWidth: 0,
-                    }]
+                    labels: categories,
+                    datasets: [
+                        { label: 'This Month', data: thisMonthTotals, backgroundColor: '#10b981', borderRadius: 4 },
+                        { label: 'Last Month', data: lastMonthTotals, backgroundColor: '#9ca3af', borderRadius: 4 }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
+                    scales: {
+                        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+                        y: { beginAtZero: true, grid: { color: '#f3f4f6' }, ticks: { font: { size: 10 } } }
+                    },
+                    plugins: {
+                        legend: { position: 'top', labels: { boxWidth: 12, font: { size: 11 } } }
+                    }
                 }
             });
 
@@ -170,7 +213,57 @@
                 }
             });
 
-            // Business Chart
+            // Business Chart - use the limit-aware loader
+            await loadTopBusinesses(topBusinessesLimit);
+
+            // Recent Transactions
+            renderRecentTransactions(allReceipts);
+        } catch (e) {
+            console.error('Dashboard load failed', e);
+        }
+    }
+
+    async function deleteReceipt(id, btn) {
+        if (!confirm('Delete this receipt?')) return;
+        btn.disabled = true;
+        try {
+            const res = await window.PennyTrack.apiFetch(`{{ path('api_receipts_list') }}/${id}`, { method: 'DELETE' });
+            if (res.ok || res.status === 204) {
+                loadDashboard();
+            }
+        } catch (e) {
+            btn.disabled = false;
+            alert('Failed to delete');
+        }
+    }
+
+    function renderRecentTransactions(receipts) {
+        const tbody = document.getElementById('recent-transactions');
+        if (!receipts || receipts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No transactions yet. <a href="{{ path('app_receipt_new') }}" class="text-primary-600 hover:underline">Add one</a>!</td></tr>';
+            return;
+        }
+
+        const limit = getRecentTransactionsLimit();
+        const visible = receipts.slice(0, limit);
+
+        tbody.innerHTML = visible.map(r => `
+            <tr class="hover:bg-gray-50">
+                <td class="px-4 py-3 text-gray-600">${formatDate(r.created_at)}</td>
+                <td class="px-4 py-3 font-medium text-gray-900">${r.business}</td>
+                <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">${r.category}</span></td>
+                <td class="px-4 py-3 text-right font-semibold text-gray-900">${formatCurrency(r.amount)}</td>
+                <td class="px-4 py-3 text-right">
+                    <button onclick="deleteReceipt(${r.id}, this)" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    async function loadTopBusinesses(limit) {
+        try {
+            const businesses = await window.PennyTrack.apiFetch(`{{ path('api_dashboard_top_businesses') }}?limit=${limit}`).then(r => r.json());
+
             if (businessChart) businessChart.destroy();
             businessChart = new Chart(document.getElementById('business-chart'), {
                 type: 'bar',
@@ -194,42 +287,22 @@
                     plugins: { legend: { display: false } }
                 }
             });
-
-            // Recent Transactions
-            const tbody = document.getElementById('recent-transactions');
-            if (receipts.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No transactions yet. <a href="{{ path('app_receipt_new') }}" class="text-primary-600 hover:underline">Add one</a>!</td></tr>';
-            } else {
-                tbody.innerHTML = receipts.data.map(r => `
-                    <tr class="hover:bg-gray-50">
-                        <td class="px-4 py-3 text-gray-600">${formatDate(r.created_at)}</td>
-                        <td class="px-4 py-3 font-medium text-gray-900">${r.business}</td>
-                        <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">${r.category}</span></td>
-                        <td class="px-4 py-3 text-right font-semibold text-gray-900">${formatCurrency(r.amount)}</td>
-                        <td class="px-4 py-3 text-right">
-                            <button onclick="deleteReceipt(${r.id}, this)" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
-                        </td>
-                    </tr>
-                `).join('');
-            }
         } catch (e) {
-            console.error('Dashboard load failed', e);
+            console.error('Top businesses load failed', e);
         }
     }
 
-    async function deleteReceipt(id, btn) {
-        if (!confirm('Delete this receipt?')) return;
-        btn.disabled = true;
-        try {
-            const res = await window.PennyTrack.apiFetch(`{{ path('api_receipts_list') }}/${id}`, { method: 'DELETE' });
-            if (res.ok || res.status === 204) {
-                loadDashboard();
-            }
-        } catch (e) {
-            btn.disabled = false;
-            alert('Failed to delete');
-        }
-    }
+    // Top Businesses limit selector
+    document.getElementById('top-businesses-limit').addEventListener('change', async (e) => {
+        localStorage.setItem('pennyTrack_topBusinessesLimit', e.target.value);
+        await loadTopBusinesses(parseInt(e.target.value, 10));
+    });
+
+    // Recent Transactions limit selector
+    document.getElementById('recent-transactions-limit').addEventListener('change', (e) => {
+        localStorage.setItem('pennyTrack_recentTransactionsLimit', e.target.value);
+        renderRecentTransactions(allReceipts);
+    });
 
     loadDashboard();
 </script>

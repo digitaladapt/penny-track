@@ -171,4 +171,64 @@ class ReceiptRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Return average monthly spend by category for the given number of months.
+     *
+     * @return array<int, array{category: string, avg_monthly_total: float}>
+     */
+    public function getCategoryMonthlyAverages(int $months = 3): array
+    {
+        $from = new \DateTimeImmutable("-{$months} months");
+        $to = new \DateTimeImmutable();
+
+        $rows = $this->createQueryBuilder('r')
+            ->select("STRFTIME('%Y-%m', r.createdAt) as month, r.category, SUM(r.amount) as total")
+            ->where('r.createdAt >= :from')
+            ->andWhere('r.createdAt <= :to')
+            ->groupBy('month')
+            ->addGroupBy('r.category')
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getResult();
+
+        // Aggregate in PHP: sum monthly totals per category, count months, compute average
+        $sumByCategory = [];
+        $countByCategory = [];
+        foreach ($rows as $row) {
+            $cat = $row['category'];
+            $total = (float) $row['total'];
+            $sumByCategory[$cat] = ($sumByCategory[$cat] ?? 0) + $total;
+            $countByCategory[$cat] = ($countByCategory[$cat] ?? 0) + 1;
+        }
+
+        return array_map(function ($cat) use ($sumByCategory, $countByCategory) {
+            return [
+                'category' => $cat,
+                'avg_monthly_total' => $countByCategory[$cat] > 0
+                    ? round($sumByCategory[$cat] / $countByCategory[$cat], 2)
+                    : 0.0,
+            ];
+        }, array_keys($sumByCategory));
+    }
+
+    /**
+     * Return the receipt with the largest amount in the given date range.
+     *
+     * @return array{id: int, business: string, amount: float, date: string}|null
+     */
+    public function getLargestReceipt(\DateTimeInterface $from, \DateTimeInterface $to): ?array
+    {
+        return $this->createQueryBuilder('r')
+            ->select('r.id as id, r.business as business, r.amount as amount, DATE(r.createdAt) as date')
+            ->where('r.createdAt >= :from')
+            ->andWhere('r.createdAt <= :to')
+            ->orderBy('r.amount', 'DESC')
+            ->setMaxResults(1)
+            ->setParameter('from', $from)
+            ->setParameter('to', $to)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

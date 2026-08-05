@@ -57,11 +57,45 @@ class DashboardController extends AbstractController
     #[Route('/api/dashboard/spending-by-category', name: 'api_dashboard_spending_by_category', methods: ['GET'])]
     public function spendingByCategory(Request $request): JsonResponse
     {
-        $months = max(1, min(12, (int) $request->query->get('months', 1)));
         $now = new \DateTimeImmutable();
-        $from = $now->modify("first day of -" . ($months - 1) . " months midnight");
+        $startOfMonth = $now->modify('first day of this month midnight');
+        $startOfLastMonth = $now->modify('first day of last month midnight');
+        $endOfLastMonth = (clone $startOfMonth)->modify('-1 second');
 
-        $data = $this->receiptRepository->getSpendingByCategory($from, $now);
+        // When comparison=true, return separate this_month and last_month breakdowns
+        if ($request->query->getBoolean('comparison', false)) {
+            $thisMonthData = $this->receiptRepository->getSpendingByCategory($startOfMonth, $now);
+            $lastMonthData = $this->receiptRepository->getSpendingByCategory($startOfLastMonth, $endOfLastMonth);
+
+            // Build lookup maps by category
+            $thisMonthMap = [];
+            foreach ($thisMonthData as $row) {
+                $thisMonthMap[$row['category']] = (float) $row['total'];
+            }
+
+            $lastMonthMap = [];
+            foreach ($lastMonthData as $row) {
+                $lastMonthMap[$row['category']] = (float) $row['total'];
+            }
+
+            // Union of all categories from both months
+            $allCategories = array_unique(array_merge(array_keys($thisMonthMap), array_keys($lastMonthMap)));
+            sort($allCategories);
+
+            return new JsonResponse([
+                'this_month' => array_map(fn ($cat) => [
+                    'category' => $cat,
+                    'total' => $thisMonthMap[$cat] ?? 0.0,
+                ], $allCategories),
+                'last_month' => array_map(fn ($cat) => [
+                    'category' => $cat,
+                    'total' => $lastMonthMap[$cat] ?? 0.0,
+                ], $allCategories),
+            ]);
+        }
+
+        // Backward compatible: return only this month's data (flat array)
+        $data = $this->receiptRepository->getSpendingByCategory($startOfMonth, $now);
 
         return new JsonResponse(array_map(fn ($row) => [
             'category' => $row['category'],
@@ -101,12 +135,16 @@ class DashboardController extends AbstractController
     }
 
     #[Route('/api/dashboard/top-businesses', name: 'api_dashboard_top_businesses', methods: ['GET'])]
-    public function topBusinesses(): JsonResponse
+    public function topBusinesses(Request $request): JsonResponse
     {
         $now = new \DateTimeImmutable();
         $from = $now->modify('first day of this month midnight');
 
-        $data = $this->receiptRepository->getTopBusinesses($from, $now, 5);
+        $rawLimit = (int) $request->query->get('limit', 5);
+        $allowedLimits = [5, 10, 15, 25];
+        $limit = in_array($rawLimit, $allowedLimits, true) ? $rawLimit : 5;
+
+        $data = $this->receiptRepository->getTopBusinesses($from, $now, $limit);
 
         return new JsonResponse(array_map(fn ($row) => [
             'business' => $row['business'],
@@ -147,14 +185,24 @@ class DashboardController extends AbstractController
         if (!empty($topBusinesses)) {
             $insights[] = [
                 'type' => 'info',
-                'message' => sprintf('Most visited this month: %s ($%.2f)', $topBusinesses[0]['business'], (float) $topBusinesses[0]['total']),
+                'message' => sprintf('Top spender this month: %s ($%.2f)', $topBusinesses[0]['business'], (float) $topBusinesses[0]['total']),
+            ];
+        }
+
+        // Largest single transaction
+        $largest = $this->receiptRepository->getLargestReceipt($startOfMonth, $now);
+        if ($largest && (float)$largest['amount'] > 100) {
+            $insights[] = [
+                'type' => 'info',
+                'message' => sprintf('Largest transaction this month: %s — $%.2f', $largest['business'], (float)$largest['amount']),
             ];
         }
 
         // Spending velocity
         $dayOfMonth = (int) $now->format('j');
         $daysInMonth = (int) $now->format('t');
-        if ($dayOfMonth > 1 && $thisMonthTotal > 0) {
+        $thisMonthCount = $this->receiptRepository->getCountInRange($startOfMonth, $now);
+        if ($dayOfMonth > 2 && $thisMonthTotal > 0 && $thisMonthCount >= 3) {
             $dailyRate = $thisMonthTotal / $dayOfMonth;
             $projected = $dailyRate * $daysInMonth;
             $insights[] = [
@@ -164,12 +212,12 @@ class DashboardController extends AbstractController
         }
 
         // Category anomalies
-        $categoryAverages = $this->receiptRepository->getCategoryAverages(3);
+        $categoryMonthlyAverages = $this->receiptRepository->getCategoryMonthlyAverages(3);
         $thisMonthByCategory = $this->receiptRepository->getSpendingByCategory($startOfMonth, $now);
 
         $avgLookup = [];
-        foreach ($categoryAverages as $row) {
-            $avgLookup[$row['category']] = (float) $row['total'];
+        foreach ($categoryMonthlyAverages as $row) {
+            $avgLookup[$row['category']] = (float) $row['avg_monthly_total'];
         }
 
         foreach ($thisMonthByCategory as $row) {
@@ -180,9 +228,27 @@ class DashboardController extends AbstractController
                 if ($ratio > 2) {
                     $insights[] = [
                         'type' => 'warning',
-                        'message' => sprintf('Unusually high spending in %s (%.0fx average)', $cat, $ratio),
+                        'message' => sprintf('Unusually high spending in %s (%.0fx average monthly)', $cat, $ratio),
                     ];
                 }
+            }
+        }
+
+        // New category detected — compare this month's categories against last 3 months
+        $thisMonthCats = array_column($this->receiptRepository->getSpendingByCategory($startOfMonth, $now), 'category');
+        $last3MonthsStart = (new \DateTimeImmutable('-3 months'))->modify('first day of midnight');
+        $endOfLastMonth = (clone $startOfMonth)->modify('-1 second');
+
+        $pastCategoriesData = $this->receiptRepository->getSpendingByCategory($last3MonthsStart, $endOfLastMonth);
+        $pastCats = array_column($pastCategoriesData, 'category');
+
+        $newCategories = array_diff($thisMonthCats, $pastCats);
+        if (!empty($newCategories)) {
+            foreach ($newCategories as $cat) {
+                $insights[] = [
+                    'type' => 'info',
+                    'message' => sprintf('New category this month: %s', $cat),
+                ];
             }
         }
 
