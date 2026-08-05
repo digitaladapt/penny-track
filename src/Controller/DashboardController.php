@@ -169,14 +169,18 @@ class DashboardController extends AbstractController
         $thisMonthByCategory = $this->receiptRepository->getSpendingByCategory($startOfMonth, $now);
 
         $avgLookup = [];
+        $maxMonths = 1.0;
         foreach ($categoryAverages as $row) {
             $avgLookup[$row['category']] = [
                 'average_count' => (float)$row['average_count'],
                 'average'       => (float)$row['average'],
+                'months'        => (float)$row['months'],
             ];
+            $maxMonths = max($maxMonths, (float)$row['months']);
         }
 
-        $projected = 0.0;
+        $projectedMin = 0.0;
+        $projectedMax = 0.0;
         $covered = [];
         foreach ($thisMonthByCategory as $row) {
             $cat = $row['category'];
@@ -188,26 +192,28 @@ class DashboardController extends AbstractController
             ) {
                 // estimate how far we are through this month
                 // half expected transaction count
+                $byCount  = $row['count'] / ($avgLookup[$cat]['average_count']);
                 // half expected total amount
-                $progress = (($row['count'] / $avgLookup[$cat]['average_count']) +
-                    ($total / $avgLookup[$cat]['average_count'] * $avgLookup[$cat]['average'])
-                ) / 2;
+                $byAmount = $total / ($avgLookup[$cat]['average_count'] * $avgLookup[$cat]['average']);
                 // cap projection to 100%
-                $projected += $total / min($progress, 1);
+                $projectedMin += $total / (min(max($byCount, $byAmount), 1) * $avgLookup[$cat]['months'] / $maxMonths);
+                $projectedMax += $total / (min($byCount, $byAmount, 1) * $avgLookup[$cat]['months'] / $maxMonths);
             } else {
                 // new category, do not predict more
-                $projected += $total;
+                $projectedMin += $total;
+                $projectedMax += $total;
             }
         }
         foreach ($avgLookup as $cat => $row) {
             if ( ! isset($covered[$cat])) {
                 // a category from the history, which has no spending in it yet
-                $projected += $row['average_count'] * $row['average'];
+                $projectedMin += $row['average_count'] * $row['average'] * ($avgLookup[$cat]['months'] / $maxMonths);
+                $projectedMax += $row['average_count'] * $row['average'] * ($avgLookup[$cat]['months'] / $maxMonths);
             }
         }
         $insights[] = [
             'type' => 'info',
-            'message' => sprintf('On track to spend ~$%.2f this month', $projected),
+            'message' => sprintf('On track to spend between $%.2f ~ $%.2f this month', $projectedMin, $projectedMax),
         ];
 
         foreach ($thisMonthByCategory as $row) {

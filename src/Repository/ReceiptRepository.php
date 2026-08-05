@@ -159,7 +159,7 @@ class ReceiptRepository extends ServiceEntityRepository
     public function getCategoryAverages(\DateTimeInterface $from, \DateTimeInterface $to): array
     {
         return $this->createQueryBuilder('r')
-            ->select('r.category, AVG(r.amount) as average, (COUNT(r.id) / COUNT(DISTINCT STRFTIME(\'%Y-%m\', r.createdAt))) as average_count')
+            ->select('r.category, AVG(r.amount) as average, (COUNT(r.id) / COUNT(DISTINCT STRFTIME(\'%Y-%m\', r.createdAt))) as average_count, COUNT(DISTINCT STRFTIME(\'%Y-%m\', r.createdAt)) as months')
             ->where('r.createdAt >= :from')
             ->andWhere('r.createdAt <= :to')
             ->groupBy('r.category')
