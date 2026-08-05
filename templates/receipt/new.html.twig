@@ -158,7 +158,8 @@
     });
 
     // Manual form submit
-    document.getElementById('manual-form').addEventListener('submit', async (e) => {
+    const manualForm = document.getElementById('manual-form');
+    manualForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target;
         const status = document.getElementById('form-status');

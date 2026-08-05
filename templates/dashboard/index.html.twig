@@ -103,15 +103,37 @@
     const formatCurrency = (n) => '$' + parseFloat(n).toFixed(2);
     const formatDate = (iso) => new Date(iso).toLocaleDateString();
 
+    function getTopBusinessesLimit() {
+        return parseInt(localStorage.getItem('pennyTrack_topBusinessesLimit') || '5', 10);
+    }
+
+    function getRecentTransactionsLimit() {
+        return parseInt(localStorage.getItem('pennyTrack_recentTransactionsLimit') || '10', 10);
+    }
+
+    function loadTopBusinessesLimit() {
+        const selector = document.getElementById('top-businesses-limit');
+        if (selector) {
+            selector.value = String(getTopBusinessesLimit());
+        }
+    }
+
+    function loadRecentTransactionsLimit() {
+        const selector = document.getElementById('recent-transactions-limit');
+        if (selector) {
+            selector.value = String(getRecentTransactionsLimit());
+        }
+    }
+
     async function loadDashboard() {
         try {
             const [summary, categories, trends, businesses, insights, receipts] = await Promise.all([
                 window.PennyTrack.apiFetch('{{ path('api_dashboard_summary') }}').then(r => r.json()),
                 window.PennyTrack.apiFetch('{{ path('api_dashboard_spending_by_category') }}').then(r => r.json()),
                 window.PennyTrack.apiFetch('{{ path('api_dashboard_spending_over_time') }}').then(r => r.json()),
-                window.PennyTrack.apiFetch('{{ path('api_dashboard_top_businesses') }}').then(r => r.json()),
+                window.PennyTrack.apiFetch(`{{ path('api_dashboard_top_businesses') }}?limit=${getTopBusinessesLimit()}`).then(r => r.json()),
                 window.PennyTrack.apiFetch('{{ path('api_dashboard_insights') }}').then(r => r.json()),
-                window.PennyTrack.apiFetch('{{ path('api_receipts_list') }}?limit=100').then(r => r.json()),
+                window.PennyTrack.apiFetch(`{{ path('api_receipts_list') }}?limit=${getRecentTransactionsLimit()}`).then(r => r.json()),
             ]);
 
             // Summary
@@ -246,6 +268,22 @@
             alert('Failed to delete');
         }
     }
+
+    // pull from local-storage and update selector on page
+    loadTopBusinessesLimit()
+    loadRecentTransactionsLimit();
+
+    // Top Businesses limit selector
+    document.getElementById('top-businesses-limit').addEventListener('change', (e) => {
+        localStorage.setItem('pennyTrack_topBusinessesLimit', e.target.value);
+        loadDashboard();
+    });
+
+    // Recent Transactions limit selector
+    document.getElementById('recent-transactions-limit').addEventListener('change', (e) => {
+        localStorage.setItem('pennyTrack_recentTransactionsLimit', e.target.value);
+        loadDashboard();
+    });
 
     loadDashboard();
 </script>
