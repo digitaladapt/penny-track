@@ -57,11 +57,19 @@ class DashboardController extends AbstractController
     #[Route('/api/dashboard/spending-by-category', name: 'api_dashboard_spending_by_category', methods: ['GET'])]
     public function spendingByCategory(Request $request): JsonResponse
     {
-        $months = max(1, min(12, (int) $request->query->get('months', 1)));
+        // If explicit from/to are given, use them; otherwise fall back to months.
         $now = new \DateTimeImmutable();
-        $from = $now->modify("first day of -" . ($months - 1) . " months midnight");
 
-        $data = $this->receiptRepository->getSpendingByCategory($from, $now);
+        if ($request->query->has('from') && $request->query->has('to')) {
+            $from = new \DateTimeImmutable($request->query->get('from'));
+            $to   = new \DateTimeImmutable($request->query->get('to'));
+        } else {
+            $months = max(1, min(12, (int) $request->query->get('months', 1)));
+            $from = $now->modify("first day of -" . ($months - 1) . " months midnight");
+            $to   = $now;
+        }
+
+        $data = $this->receiptRepository->getSpendingByCategory($from, $to);
 
         return new JsonResponse(array_map(fn ($row) => [
             'category' => $row['category'],
