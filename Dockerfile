@@ -10,6 +10,9 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
+# Build arg for application version (pass with --build-arg APP_VERSION=v1.3.0 in CI)
+ARG APP_VERSION=dev
+
 # Copy only manifests first for better layer caching
 COPY composer.json composer.lock symfony.lock ./
 
@@ -17,6 +20,9 @@ RUN composer install --no-dev --no-interaction --no-scripts
 
 # Copy the rest of the application
 COPY . .
+
+# Write the version file (used by SystemController at runtime)
+RUN echo "${APP_VERSION}" > VERSION
 
 # Run composer auto-scripts (cache:clear, assets:install, importmap:install)
 ENV APP_ENV=prod

@@ -1,3 +1,14 @@
+<!--
+  ARCHIVED — Historical Document
+  ================================
+  This document was the original MVP planning spec. It references
+  technologies and patterns that no longer match the project:
+  Symfony 7 (actual: 8.1), PHP 8.3 (actual: 8.4), Git-Flow (not used),
+  Symfony Forms (not used), Doctrine fixtures (not used).
+  Kept for historical context only — see README.md and ROADMAP.md
+  for current project state.
+-->
+
 # Penny-Track: Budgeting & Receipt Tracking System
 
 ## Project Overview
