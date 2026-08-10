@@ -1,10 +1,15 @@
+networks:
+  public:
+    external: true
+
 services:
-  app:
+  penny-track:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "${APP_PORT:-8080}:80"
+    container_name: penny-track
+    expose:
+      - 80
     environment:
       APP_SECRET: ${APP_SECRET:-}
       DATABASE_URL: "sqlite:///%kernel.project_dir%/var/data.db"
@@ -13,8 +18,9 @@ services:
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       LLM_TIMEOUT: ${LLM_TIMEOUT:-10}
       MAILER_DSN: ${MAILER_DSN:-null://null}
+    restart: unless-stopped
+    networks:
+      - public
     volumes:
-      - app_data:/app/var
+      - ./var:/app/var
 
-volumes:
-  app_data:
