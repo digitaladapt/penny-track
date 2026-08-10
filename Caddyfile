@@ -1,6 +1,5 @@
 # --- penny-track	---	---	---	---	---	---	---	---
 track.devgnome.com {
-	root /data/penny
-	reverse_proxy dockerhost:8000
+	reverse_proxy penny-track
 }
 

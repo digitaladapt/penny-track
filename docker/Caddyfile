@@ -1,0 +1,14 @@
+{
+	# FrankenPHP module is built into the dunglas/frankenphp image
+}
+
+# Listen on plain HTTP — TLS is terminated by the external Caddy reverse proxy
+:80 {
+	root * /app/public
+	encode zstd gzip
+
+	# Symfony front controller — worker mode is activated via FRANKENPHP_WORKER env var
+	php_server {
+		worker /app/public/index.php
+	}
+}
