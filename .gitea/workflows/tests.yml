@@ -40,5 +40,8 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
+      - name: Run php-cs-fixer
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
       - name: Run tests
         run: vendor/bin/phpunit --configuration phpunit.dist.xml
