@@ -50,16 +50,16 @@ COPY docker/entrypoint.sh /app/docker/entrypoint.sh
 RUN chmod +x /app/docker/entrypoint.sh
 
 # Create var directory for SQLite DB, logs, cache
-RUN mkdir -p /app/var
+RUN mkdir -p /app/var/data
 
 # Environment defaults
 ENV APP_ENV=prod \
     FRANKENPHP_WORKER=1 \
     FRANKENPHP_RESET_KERNEL=1 \
-    DATABASE_URL="sqlite:///%kernel.project_dir%/var/data.db"
+    DATABASE_URL="sqlite:///%kernel.project_dir%/var/data/penny_track.db"
 
-# Volume for SQLite database, logs, and cache
-VOLUME /app/var
+# Volume for SQLite database only (logs/cache stay in-container)
+VOLUME /app/var/data
 
 EXPOSE 80
 
