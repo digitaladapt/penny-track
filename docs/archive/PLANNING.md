@@ -332,7 +332,7 @@ APP_ENV=dev
 APP_SECRET=change-me-in-production
 
 # Database
-DATABASE_URL="sqlite:///%kernel.project_dir%/var/data.db"
+DATABASE_URL="sqlite:///%kernel.project_dir%/var/data/penny_track.db"
 
 # LLM Configuration
 LLM_API_ENDPOINT=https://api.openai.com/v1/chat/completions

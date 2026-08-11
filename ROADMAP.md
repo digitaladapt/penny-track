@@ -11,7 +11,7 @@ monthly spending summaries.
 - **Location:** `projects/penny-track/`
 - **Framework:** Symfony 8.1 (full-stack skeleton)
 - **Language:** PHP ≥ 8.4
-- **Database:** SQLite (`var/data.db`), PostgreSQL-capable
+- **Database:** SQLite (`var/data/penny_track.db`), PostgreSQL-capable
 - **Frontend:** Tailwind CSS (CDN), Chart.js 4.4.1 (CDN)
 - **Auth:** API key (bcrypt-hashed, stored in DB)
 
@@ -89,7 +89,7 @@ monthly spending summaries.
 
 | Variable           | Default                        | Purpose                       |
 |--------------------|--------------------------------|-------------------------------|
-| `DATABASE_URL`     | `sqlite:///%kernel.project_dir%/var/data.db` | Database connection |
+| `DATABASE_URL`     | `sqlite:///%kernel.project_dir%/var/data/penny_track.db` | Database connection |
 | `LLM_API_ENDPOINT`| *(required for parse)*         | LLM endpoint for receipt parsing |
 | `LLM_API_KEY`      | *(required for parse)*         | LLM API key                   |
 | `APP_ENV`          | `dev`                          | Symfony environment           |
@@ -222,7 +222,7 @@ features or publishing.
 │  ├── ApiKey Authenticator (middleware)   │
 │  └── LLM Client Service                  │
 ├─────────────────────────────────────────┤
-│  SQLite (var/data.db)                    │
+│  SQLite (var/data/penny_track.db)        │
 └─────────────────────────────────────────┘
 ```
 

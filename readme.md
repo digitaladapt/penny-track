@@ -87,7 +87,7 @@ Supports any OpenAI-compatible API (Ollama, LM Studio, etc.).
 | Variable            | Default                        | Purpose                          |
 |---------------------|--------------------------------|----------------------------------|
 | `APP_SECRET`        | *(required in prod)*           | Symfony secret                   |
-| `DATABASE_URL`      | `sqlite:///%kernel.project_dir%/var/data.db` | Database connection |
+| `DATABASE_URL`      | `sqlite:///%kernel.project_dir%/var/data/penny_track.db` | Database connection |
 | `LLM_API_ENDPOINT`  | `https://api.openai.com/v1/chat/completions` | LLM endpoint for receipt parsing |
 | `LLM_API_KEY`       | `change-me`                    | LLM API key                      |
 | `LLM_MODEL`         | `gpt-4o-mini`                  | LLM model name                   |
