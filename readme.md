@@ -56,6 +56,18 @@ symfony server:start
 
 Visit `http://localhost:8000` and follow the setup to generate your API key.
 
+### Code Style
+
+This project follows [PSR-12](https://www.php-fig.org/psr/psr-12/) and includes `php-cs-fixer` as a dev dependency.
+
+```bash
+# Check for style violations
+vendor/bin/php-cs-fixer fix --dry-run --diff
+
+# Auto-fix
+vendor/bin/php-cs-fixer fix
+```
+
 ## Configuration
 
 Set in `.env` or `.env.local`:

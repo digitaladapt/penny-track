@@ -217,7 +217,7 @@ class DashboardController extends AbstractController
             }
         }
         foreach ($avgLookup as $cat => $row) {
-            if ( ! isset($covered[$cat])) {
+            if (! isset($covered[$cat])) {
                 // a category from the history, which has no spending in it yet
                 $projectedMin += $row['average_count'] * $row['average'] * ($avgLookup[$cat]['months'] / $maxMonths);
                 $projectedMax += $row['average_count'] * $row['average'] * ($avgLookup[$cat]['months'] / $maxMonths);
