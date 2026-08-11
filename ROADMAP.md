@@ -27,13 +27,13 @@ monthly spending summaries.
 - ✅ LLM-powered receipt parsing (`POST /api/receipts/parse`)
 - ✅ Two HTML pages (dashboard + new receipt form)
 - ✅ Basic test suite (functional + unit tests)
-- ✅ Docker Compose setup for local development
+- ✅ Docker Compose setup (FrankenPHP worker mode, multi-stage build)
 
 ### What's Missing or Needs Work
 
 - ❌ No search/filter endpoint for receipts
-- ❌ No migration files (schema managed manually or via `schema:create`)
-- ❌ No published Docker image
+- ✅ Doctrine migrations (initial migration generated)
+- ❌ No published Docker image (Dockerfile is ready, image not pushed to a registry)
 - ❌ No published GitHub/Gitea repository
 - ❌ Test coverage is thin — no tests for auth, parse, or several edge cases
 - ❌ No input sanitisation / validation beyond basic Symfony constraints
@@ -90,7 +90,7 @@ monthly spending summaries.
 | Variable           | Default                        | Purpose                       |
 |--------------------|--------------------------------|-------------------------------|
 | `DATABASE_URL`     | `sqlite:///%kernel.project_dir%/var/data.db` | Database connection |
-| `LLM_API_URL`      | *(required for parse)*         | LLM endpoint for receipt parsing |
+| `LLM_API_ENDPOINT`| *(required for parse)*         | LLM endpoint for receipt parsing |
 | `LLM_API_KEY`      | *(required for parse)*         | LLM API key                   |
 | `APP_ENV`          | `dev`                          | Symfony environment           |
 | `APP_SECRET`       | *(generated)*                  | Symfony secret                |
@@ -104,9 +104,9 @@ monthly spending summaries.
 **Goal:** Make the codebase robust and well-tested before adding
 features or publishing.
 
-- [ ] **Add Doctrine migrations** — replace ad-hoc schema creation with
-      proper versioned migration files. Run `doctrine:migrations:diff`
-      to generate the initial migration from existing entities.
+- [x] **Add Doctrine migrations** — ✅ Done. Initial migration generated
+      via `doctrine:migrations:diff`, creates `receipt`, `api_key`, and
+      `messenger_messages` tables.
 - [ ] **Comprehensive test coverage:**
   - [ ] `AuthController` tests — setup (first-time, already-set-up),
         verify (valid, invalid, missing key), middleware (unauthenticated
@@ -163,14 +163,14 @@ features or publishing.
 
 **Goal:** Get penny-track containerised and published.
 
-- [ ] **Production Dockerfile:**
+- [x] **Production Dockerfile:** ✅ Done.
   - Multi-stage build (composer install in build stage, copy to runtime)
-  - PHP-FPM + Caddy/Nginx or PHP's built-in server for simplicity
-  - Use `APP_ENV=prod` in the image
-  - Run migrations on container startup
-  - SQLite data stored in a volume
-  - Health check endpoint
-- [ ] **docker-compose.production.yml:**
+  - FrankenPHP worker mode (Caddy-based, no separate PHP-FPM needed)
+  - Uses `APP_ENV=prod` in the image
+  - Runs `doctrine:migrations:migrate` on container startup
+  - SQLite data stored in a volume (`/app/var`)
+  - Health check endpoint (`/api/health`)
+- [x] **compose.yaml:** ✅ Done (single service, production-ready).
   - Single service (app + SQLite)
   - Optional PostgreSQL service for larger deployments
   - Volume for `var/` (database + logs)
@@ -229,7 +229,7 @@ features or publishing.
 ### LLM Integration
 
 The `POST /api/receipts/parse` endpoint sends raw text to an external LLM
-(configured via `LLM_API_URL` and `LLM_API_KEY`) and expects a JSON
+(configured via `LLM_API_ENDPOINT` and `LLM_API_KEY`) and expects a JSON
 response with receipt fields. If the LLM fails or returns unparseable
 data, it falls back to creating a receipt with `amount=0`,
 `business="Unknown"`, `category="Other"`.

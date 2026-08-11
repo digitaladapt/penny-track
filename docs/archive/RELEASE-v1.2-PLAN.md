@@ -1,3 +1,13 @@
+<!--
+  ARCHIVED — Historical Document
+  ================================
+  This was the release plan for v1.2. Some features were implemented
+  (top businesses limit selector, insight calculation fixes) while
+  others were not (comparison mode for spending-by-category).
+  Kept for historical context only — see README.md and ROADMAP.md
+  for current project state.
+-->
+
 # Penny-Track — Release v1.2 Planning Document
 
 **Status:** Draft  
