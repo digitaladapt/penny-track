@@ -44,7 +44,7 @@
                 <option value="12">12 months</option>
             </select>
         </div>
-        <div class="h-80">
+        <div class="h-96">
             <canvas id="budget-chart"></canvas>
         </div>
     </div>
@@ -212,30 +212,30 @@
             const hasData = datasets.some(ds => ds.data.some(v => v > 0));
 
             if (hasData) {
-                // Calculate the max stacked total to set y-axis max nicely
+                // Calculate the max stacked total to set x-axis max nicely
                 const monthlyTotals = monthLabels.map((_, i) =>
                     datasets.reduce((sum, ds) => sum + (ds.data[i] || 0), 0)
                 );
                 const maxSpent = Math.max(...monthlyTotals, 0);
-                const yMax = budgetGoal ? Math.max(budgetGoal * 1.15, maxSpent * 1.1) : maxSpent * 1.1;
+                const xMax = budgetGoal ? Math.max(budgetGoal * 1.15, maxSpent * 1.1) : maxSpent * 1.1;
 
-                // Build annotation plugins for budget line
+                // Build annotation plugin for vertical budget line
                 const budgetAnnotations = budgetGoal ? {
                     id: 'budgetLine',
                     afterDraw: (chart) => {
                         const ctx = chart.ctx;
-                        const yAxis = chart.scales.y;
                         const xAxis = chart.scales.x;
-                        const y = yAxis.getPixelForValue(budgetGoal);
-                        if (y < yAxis.top || y > yAxis.bottom) return;
+                        const yAxis = chart.scales.y;
+                        const x = xAxis.getPixelForValue(budgetGoal);
+                        if (x < xAxis.left || x > xAxis.right) return;
 
                         ctx.save();
                         ctx.strokeStyle = '#ef4444';
                         ctx.lineWidth = 2;
                         ctx.setLineDash([6, 4]);
                         ctx.beginPath();
-                        ctx.moveTo(xAxis.left, y);
-                        ctx.lineTo(xAxis.right, y);
+                        ctx.moveTo(x, yAxis.top);
+                        ctx.lineTo(x, yAxis.bottom);
                         ctx.stroke();
                         ctx.restore();
 
@@ -243,8 +243,8 @@
                         ctx.save();
                         ctx.fillStyle = '#ef4444';
                         ctx.font = 'bold 11px sans-serif';
-                        ctx.textAlign = 'right';
-                        ctx.fillText(`Budget: ${formatCurrency(budgetGoal)}`, xAxis.right - 4, y - 6);
+                        ctx.textAlign = 'left';
+                        ctx.fillText(`Budget: ${formatCurrency(budgetGoal)}`, x + 4, yAxis.top + 12);
                         ctx.restore();
                     }
                 } : {};
@@ -256,23 +256,24 @@
                         datasets: datasets,
                     },
                     options: {
+                        indexAxis: 'y',
                         responsive: true,
                         maintainAspectRatio: false,
                         scales: {
                             x: {
                                 stacked: true,
-                                grid: { display: false },
-                                ticks: { font: { size: 11 } }
-                            },
-                            y: {
-                                stacked: true,
                                 beginAtZero: true,
-                                max: yMax,
+                                max: xMax,
                                 grid: { color: '#f3f4f6' },
                                 ticks: {
                                     font: { size: 10 },
                                     callback: (v) => '$' + v.toFixed(0),
                                 }
+                            },
+                            y: {
+                                stacked: true,
+                                grid: { display: false },
+                                ticks: { font: { size: 11 } }
                             }
                         },
                         plugins: {
@@ -282,9 +283,9 @@
                             },
                             tooltip: {
                                 callbacks: {
-                                    label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
+                                    label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.x)}`,
                                     footer: (items) => {
-                                        const total = items.reduce((s, i) => s + i.parsed.y, 0);
+                                        const total = items.reduce((s, i) => s + i.parsed.x, 0);
                                         return `Total: ${formatCurrency(total)}`;
                                     }
                                 }
