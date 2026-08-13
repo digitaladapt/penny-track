@@ -211,6 +211,43 @@ class ReceiptRepository extends ServiceEntityRepository
     }
 
     /**
+     * Return per-month, per-category spending totals for the last N months.
+     *
+     * Returns an associative array keyed by 'YYYY-MM', each value being a list of
+     * {category, total} arrays sorted by total descending.
+     *
+     * @return array<string, array<int, array{category: string, total: float}>>
+     */
+    public function getMonthlyCategoryBreakdown(int $months): array
+    {
+        $now = new \DateTimeImmutable();
+        $from = $now->modify("first day of -" . ($months - 1) . " months midnight");
+
+        $rows = $this->createQueryBuilder('r')
+            ->select("STRFTIME('%Y-%m', r.createdAt) as month, r.category, SUM(r.amount) as total")
+            ->where('r.createdAt >= :from')
+            ->andWhere('r.createdAt <= :now')
+            ->groupBy('month')
+            ->addGroupBy('r.category')
+            ->orderBy('month', 'ASC')
+            ->addOrderBy('total', 'DESC')
+            ->setParameter('from', $from)
+            ->setParameter('now', $now)
+            ->getQuery()
+            ->getResult();
+
+        $result = [];
+        foreach ($rows as $row) {
+            $result[$row['month']][] = [
+                'category' => $row['category'],
+                'total' => (float) $row['total'],
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * Return the receipt with the largest amount in the given date range.
      *
      * @return array{id: int, business: string, amount: float, date: string}|null

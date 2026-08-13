@@ -31,19 +31,21 @@
         <div class="space-y-2" id="insights-list"></div>
     </div>
 
-    <!-- Charts -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <h3 class="text-sm font-semibold text-gray-700 mb-4">This Month by Category</h3>
-            <div class="h-64">
-                <canvas id="category-chart"></canvas>
-            </div>
+    <!-- Stacked Budget Chart -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-semibold text-gray-700">Monthly Spending by Category</h3>
+            <select id="budget-chart-months" class="text-xs border rounded-md px-2 py-1 bg-white">
+                <option value="1">1 month</option>
+                <option value="2" selected>2 months</option>
+                <option value="3">3 months</option>
+                <option value="4">4 months</option>
+                <option value="6">6 months</option>
+                <option value="12">12 months</option>
+            </select>
         </div>
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <h3 class="text-sm font-semibold text-gray-700 mb-4">Last Month by Category</h3>
-            <div class="h-64">
-                <canvas id="category-last-month-chart"></canvas>
-            </div>
+        <div class="h-80">
+            <canvas id="budget-chart"></canvas>
         </div>
     </div>
 
@@ -105,7 +107,7 @@
 </div>
 
 <script>
-    let categoryChart, categoryLastMonthChart, trendChart, businessChart;
+    let budgetChart, trendChart, businessChart;
 
     const formatCurrency = (n) => '$' + parseFloat(n).toFixed(2);
     const formatDate = (iso) => new Date(iso).toLocaleDateString();
@@ -116,6 +118,17 @@
 
     function getRecentTransactionsLimit() {
         return parseInt(localStorage.getItem('pennyTrack_recentTransactionsLimit') || '10', 10);
+    }
+
+    function getBudgetChartMonths() {
+        return parseInt(localStorage.getItem('pennyTrack_budgetChartMonths') || '2', 10);
+    }
+
+    function loadBudgetChartMonths() {
+        const selector = document.getElementById('budget-chart-months');
+        if (selector) {
+            selector.value = String(getBudgetChartMonths());
+        }
     }
 
     function loadTopBusinessesLimit() {
@@ -137,14 +150,10 @@
         const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
         const endOfThisMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString().slice(0, 10);
 
-        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
-        const endOfLastMonth   = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59).toISOString().slice(0, 10);
-
         try {
-            const [summary, categoriesThisMonth, categoriesLastMonth, trends, businesses, insights, receipts] = await Promise.all([
+            const [summary, monthlyBreakdown, trends, businesses, insights, receipts] = await Promise.all([
                 window.PennyTrack.apiFetch('{{ path('api_dashboard_summary') }}').then(r => r.json()),
-                window.PennyTrack.apiFetch(`{{ path('api_dashboard_spending_by_category') }}?from=${startOfThisMonth}&to=${endOfThisMonth}`).then(r => r.json()),
-                window.PennyTrack.apiFetch(`{{ path('api_dashboard_spending_by_category') }}?from=${startOfLastMonth}&to=${endOfLastMonth}`).then(r => r.json()),
+                window.PennyTrack.apiFetch(`{{ path('api_dashboard_monthly_breakdown') }}?months=${getBudgetChartMonths()}`).then(r => r.json()),
                 window.PennyTrack.apiFetch('{{ path('api_dashboard_spending_over_time') }}').then(r => r.json()),
                 window.PennyTrack.apiFetch(`{{ path('api_dashboard_top_businesses') }}?limit=${getTopBusinessesLimit()}`).then(r => r.json()),
                 window.PennyTrack.apiFetch('{{ path('api_dashboard_insights') }}').then(r => r.json()),
@@ -180,83 +189,130 @@
                 container.classList.remove('hidden');
             }
 
-            // Category Chart (This Month)
-            if (categoryChart) categoryChart.destroy();
-            const chartColors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6b7280'];
+            // Stacked Budget Chart
+            if (budgetChart) budgetChart.destroy();
+            const chartColors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6b7280',
+                                 '#14b8a6', '#f97316', '#a855f7', '#06b6d4', '#84cc16'];
 
-            if (categoriesThisMonth.length > 0) {
-                categoryChart = new Chart(document.getElementById('category-chart'), {
-                    type: 'doughnut',
+            // Format month labels: "2025-07" → "Jul 2025"
+            const monthLabels = (monthlyBreakdown.months || []).map(m => {
+                const [y, mo] = m.split('-');
+                const d = new Date(parseInt(y), parseInt(mo) - 1, 1);
+                return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            });
+
+            const datasets = (monthlyBreakdown.datasets || []).map((ds, i) => ({
+                label: ds.category,
+                data: ds.data,
+                backgroundColor: chartColors[i % chartColors.length],
+                borderRadius: 3,
+            }));
+
+            const budgetGoal = monthlyBreakdown.budget_goal;
+            const hasData = datasets.some(ds => ds.data.some(v => v > 0));
+
+            if (hasData) {
+                // Calculate the max stacked total to set y-axis max nicely
+                const monthlyTotals = monthLabels.map((_, i) =>
+                    datasets.reduce((sum, ds) => sum + (ds.data[i] || 0), 0)
+                );
+                const maxSpent = Math.max(...monthlyTotals, 0);
+                const yMax = budgetGoal ? Math.max(budgetGoal * 1.15, maxSpent * 1.1) : maxSpent * 1.1;
+
+                // Build annotation plugins for budget line
+                const budgetAnnotations = budgetGoal ? {
+                    id: 'budgetLine',
+                    afterDraw: (chart) => {
+                        const ctx = chart.ctx;
+                        const yAxis = chart.scales.y;
+                        const xAxis = chart.scales.x;
+                        const y = yAxis.getPixelForValue(budgetGoal);
+                        if (y < yAxis.top || y > yAxis.bottom) return;
+
+                        ctx.save();
+                        ctx.strokeStyle = '#ef4444';
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([6, 4]);
+                        ctx.beginPath();
+                        ctx.moveTo(xAxis.left, y);
+                        ctx.lineTo(xAxis.right, y);
+                        ctx.stroke();
+                        ctx.restore();
+
+                        // Label
+                        ctx.save();
+                        ctx.fillStyle = '#ef4444';
+                        ctx.font = 'bold 11px sans-serif';
+                        ctx.textAlign = 'right';
+                        ctx.fillText(`Budget: ${formatCurrency(budgetGoal)}`, xAxis.right - 4, y - 6);
+                        ctx.restore();
+                    }
+                } : {};
+
+                budgetChart = new Chart(document.getElementById('budget-chart'), {
+                    type: 'bar',
                     data: {
-                        labels: categoriesThisMonth.map(c => c.category),
-                        datasets: [{
-                            data: categoriesThisMonth.map(c => c.total),
-                            backgroundColor: chartColors,
-                            borderWidth: 0,
-                        }]
+                        labels: monthLabels,
+                        datasets: datasets,
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
-                    }
+                        scales: {
+                            x: {
+                                stacked: true,
+                                grid: { display: false },
+                                ticks: { font: { size: 11 } }
+                            },
+                            y: {
+                                stacked: true,
+                                beginAtZero: true,
+                                max: yMax,
+                                grid: { color: '#f3f4f6' },
+                                ticks: {
+                                    font: { size: 10 },
+                                    callback: (v) => '$' + v.toFixed(0),
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: { boxWidth: 12, font: { size: 11 } }
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: (ctx) => ` ${ctx.dataset.label}: ${formatCurrency(ctx.parsed.y)}`,
+                                    footer: (items) => {
+                                        const total = items.reduce((s, i) => s + i.parsed.y, 0);
+                                        return `Total: ${formatCurrency(total)}`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    plugins: budgetGoal ? [budgetAnnotations] : []
                 });
             } else {
-                // Show a placeholder if no data
-                categoryChart = new Chart(document.getElementById('category-chart'), {
-                    type: 'doughnut',
+                // No data placeholder
+                budgetChart = new Chart(document.getElementById('budget-chart'), {
+                    type: 'bar',
                     data: {
-                        labels: ['No data'],
+                        labels: monthLabels.length > 0 ? monthLabels : ['No data'],
                         datasets: [{
-                            data: [1],
-                            backgroundColor: ['#e5e7eb'],
-                            borderWidth: 0,
+                            label: 'No data',
+                            data: monthLabels.length > 0 ? monthLabels.map(() => 0) : [0],
+                            backgroundColor: '#e5e7eb',
                         }]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
-                        plugins: { legend: { display: false } }
-                    }
-                });
-            }
-
-            // Category Chart (Last Month)
-            if (categoryLastMonthChart) categoryLastMonthChart.destroy();
-
-            if (categoriesLastMonth.length > 0) {
-                categoryLastMonthChart = new Chart(document.getElementById('category-last-month-chart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: categoriesLastMonth.map(c => c.category),
-                        datasets: [{
-                            data: categoriesLastMonth.map(c => c.total),
-                            backgroundColor: chartColors,
-                            borderWidth: 0,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { position: 'right', labels: { boxWidth: 12, font: { size: 11 } } } }
-                    }
-                });
-            } else {
-                // Show a placeholder if no data
-                categoryLastMonthChart = new Chart(document.getElementById('category-last-month-chart'), {
-                    type: 'doughnut',
-                    data: {
-                        labels: ['No data'],
-                        datasets: [{
-                            data: [1],
-                            backgroundColor: ['#e5e7eb'],
-                            borderWidth: 0,
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } }
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { stacked: true },
+                            y: { stacked: true, beginAtZero: true }
+                        }
                     }
                 });
             }
@@ -347,8 +403,9 @@
     }
 
     // pull from local-storage and update selector on page
-    loadTopBusinessesLimit()
+    loadTopBusinessesLimit();
     loadRecentTransactionsLimit();
+    loadBudgetChartMonths();
 
     // Top Businesses limit selector
     document.getElementById('top-businesses-limit').addEventListener('change', (e) => {
@@ -359,6 +416,12 @@
     // Recent Transactions limit selector
     document.getElementById('recent-transactions-limit').addEventListener('change', (e) => {
         localStorage.setItem('pennyTrack_recentTransactionsLimit', e.target.value);
+        loadDashboard();
+    });
+
+    // Budget chart months selector
+    document.getElementById('budget-chart-months').addEventListener('change', (e) => {
+        localStorage.setItem('pennyTrack_budgetChartMonths', e.target.value);
         loadDashboard();
     });
 
