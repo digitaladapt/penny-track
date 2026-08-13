@@ -92,22 +92,24 @@ class DashboardController extends AbstractController
             $monthLabels[] = $now->modify("first day of -{$i} months midnight")->format('Y-m');
         }
 
-        // Collect all categories across all months, preserving first-seen order
-        // (this ensures consistent dataset ordering for the stacked chart)
-        $allCategories = [];
+        // Collect all categories across all months, with their grand total
+        // so we can sort by total spend across all selected months (DESC).
+        $categoryTotals = [];
         foreach ($monthLabels as $label) {
             if (isset($breakdown[$label])) {
                 foreach ($breakdown[$label] as $row) {
-                    if (!in_array($row['category'], $allCategories, true)) {
-                        $allCategories[] = $row['category'];
-                    }
+                    $cat = $row['category'];
+                    $categoryTotals[$cat] = ($categoryTotals[$cat] ?? 0) + $row['total'];
                 }
             }
         }
+        // Sort categories by grand total descending
+        arsort($categoryTotals);
+        $sortedCategories = array_keys($categoryTotals);
 
         // Build datasets: one per category, values per month
         $datasets = [];
-        foreach ($allCategories as $cat) {
+        foreach ($sortedCategories as $cat) {
             $data = [];
             foreach ($monthLabels as $label) {
                 $found = 0.0;
