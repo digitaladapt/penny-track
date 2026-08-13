@@ -189,6 +189,7 @@ start() {
     LLM_API_KEY="dev_llm_key_not_real" \
     LLM_MODEL="dev-model" \
     LLM_TIMEOUT="5" \
+    BUDGET_GOAL="500" \
     php bin/console doctrine:migrations:migrate --no-interaction 2>&1 | tail -5
 
     echo "→ Clearing dev cache…"
@@ -196,6 +197,7 @@ start() {
     APP_DEBUG=1 \
     APP_SECRET="$DEV_SECRET" \
     DATABASE_URL="sqlite:///%kernel.project_dir%/${DEV_DB}" \
+    BUDGET_GOAL="500" \
     php bin/console cache:clear 2>&1 | tail -3
 
     echo "→ Starting PHP dev server…"
@@ -208,6 +210,7 @@ start() {
     LLM_API_KEY="dev_llm_key_not_real" \
     LLM_MODEL="dev-model" \
     LLM_TIMEOUT="5" \
+    BUDGET_GOAL="500" \
     nohup php -S "${HOST}:${PORT}" -t public/ > "$LOG_FILE" 2>&1 &
 
     local pid=$!

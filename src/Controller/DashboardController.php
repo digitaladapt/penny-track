@@ -15,6 +15,7 @@ class DashboardController extends AbstractController
 {
     public function __construct(
         private readonly ReceiptRepository $receiptRepository,
+        private readonly float $budgetGoal = 0.0,
     ) {
     }
 
@@ -75,6 +76,64 @@ class DashboardController extends AbstractController
             'category' => $row['category'],
             'total' => (float) $row['total'],
         ], $data));
+    }
+
+    #[Route('/api/dashboard/monthly-breakdown', name: 'api_dashboard_monthly_breakdown', methods: ['GET'])]
+    public function monthlyBreakdown(Request $request): JsonResponse
+    {
+        $months = max(1, min(12, (int) $request->query->get('months', 2)));
+
+        $breakdown = $this->receiptRepository->getMonthlyCategoryBreakdown($months);
+
+        // Build a complete list of months (including months with no spending)
+        $now = new \DateTimeImmutable();
+        $monthLabels = [];
+        for ($i = $months - 1; $i >= 0; $i--) {
+            $monthLabels[] = $now->modify("first day of -{$i} months midnight")->format('Y-m');
+        }
+
+        // Collect all categories across all months, with their grand total
+        // so we can sort by total spend across all selected months (DESC).
+        $categoryTotals = [];
+        foreach ($monthLabels as $label) {
+            if (isset($breakdown[$label])) {
+                foreach ($breakdown[$label] as $row) {
+                    $cat = $row['category'];
+                    $categoryTotals[$cat] = ($categoryTotals[$cat] ?? 0) + $row['total'];
+                }
+            }
+        }
+        // Sort categories by grand total descending
+        arsort($categoryTotals);
+        $sortedCategories = array_keys($categoryTotals);
+
+        // Build datasets: one per category, values per month
+        $datasets = [];
+        foreach ($sortedCategories as $cat) {
+            $data = [];
+            foreach ($monthLabels as $label) {
+                $found = 0.0;
+                if (isset($breakdown[$label])) {
+                    foreach ($breakdown[$label] as $row) {
+                        if ($row['category'] === $cat) {
+                            $found = $row['total'];
+                            break;
+                        }
+                    }
+                }
+                $data[] = round($found, 2);
+            }
+            $datasets[] = [
+                'category' => $cat,
+                'data' => $data,
+            ];
+        }
+
+        return new JsonResponse([
+            'months' => $monthLabels,
+            'datasets' => $datasets,
+            'budget_goal' => $this->budgetGoal > 0 ? round($this->budgetGoal, 2) : null,
+        ]);
     }
 
     #[Route('/api/dashboard/spending-over-time', name: 'api_dashboard_spending_over_time', methods: ['GET'])]
