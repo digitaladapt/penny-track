@@ -23,6 +23,14 @@ jobs:
           coverage: none
           tools: composer:v2
 
+      # Authenticate to GitHub to raise API rate limit from 60 → 5,000 req/hour.
+      # Composer downloads packages from api.github.com; without auth, the 143
+      # GitHub-hosted packages in composer.lock exceed the 60 req/hour limit.
+      - name: Configure GitHub OAuth token
+        env:
+          GITHUB_TOKEN: ${{ secrets.SYNC_GITHUB_TOKEN }}
+        run: composer config --global github-oauth.github.com "$GITHUB_TOKEN"
+
       - name: Validate composer.json
         run: composer validate --strict --no-check-publish
 
