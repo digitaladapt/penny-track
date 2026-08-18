@@ -17,8 +17,10 @@
         <p class="text-gray-500">No pending or failed parse jobs. All caught up!</p>
     </div>
     {% else %}
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <table class="w-full text-sm">
+
+    {# ── Desktop table (sm and up) with horizontal scroll fallback ── #}
+    <div class="hidden sm:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
+        <table class="w-full text-sm min-w-[640px]">
             <thead>
                 <tr class="bg-gray-50 border-b border-gray-200 text-left text-gray-600">
                     <th class="px-4 py-3 font-medium">Raw Text</th>
@@ -84,6 +86,56 @@
             </tbody>
         </table>
     </div>
+
+    {# ── Mobile card layout (below sm) ── #}
+    <div class="sm:hidden space-y-3">
+        {% for job in jobs %}
+        <div id="job-mobile-{{ job.id }}" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+            <div class="flex items-center justify-between mb-2">
+                {% if job.status == 'pending' %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Pending</span>
+                {% elseif job.status == 'processing' %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Processing</span>
+                {% elseif job.status == 'failed' %}
+                    <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Failed</span>
+                {% endif %}
+                <span class="text-gray-400 text-xs">{{ job.createdAt|date('M j, g:ia') }}</span>
+            </div>
+
+            <div class="text-gray-800 text-sm mb-2 break-words" title="{{ job.rawText }}">{{ job.rawText }}</div>
+
+            <div class="text-xs text-gray-500 mb-1">
+                Attempts: {{ job.attempts }} / {{ job.maxAttempts }}
+            </div>
+
+            {% if job.lastError %}
+            <div class="text-red-600 text-xs mb-2 break-words">{{ job.lastError }}</div>
+            {% endif %}
+
+            {% if job.status != 'processing' %}
+            <div class="flex flex-wrap gap-2 pt-2 border-t border-gray-100">
+                <button onclick="manualAddMobile({{ job.id }})"
+                    class="text-primary-600 hover:text-primary-800 text-xs font-medium px-2 py-1 rounded hover:bg-primary-50 transition">
+                    Manual Add
+                </button>
+                {% if job.status == 'failed' or job.status == 'pending' %}
+                <button onclick="retryJob({{ job.id }})"
+                    class="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50 transition">
+                    Retry
+                </button>
+                {% endif %}
+                <button onclick="deleteJob({{ job.id }})"
+                    class="text-red-600 hover:text-red-800 text-xs font-medium px-2 py-1 rounded hover:bg-red-50 transition">
+                    Delete
+                </button>
+            </div>
+            {% else %}
+            <div class="text-gray-400 text-xs pt-2 border-t border-gray-100">in progress…</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
     {% endif %}
 </div>
 
@@ -183,10 +235,21 @@
         }).catch(() => alert('Network error'));
     }
 
+    // Desktop: read raw text from table row
     function manualAdd(id) {
         const row = document.getElementById('job-' + id);
         const rawText = row.querySelector('td:first-child > div').textContent;
+        openManualModal(id, rawText);
+    }
 
+    // Mobile: read raw text from card
+    function manualAddMobile(id) {
+        const card = document.getElementById('job-mobile-' + id);
+        const rawText = card.querySelector('.break-words').textContent;
+        openManualModal(id, rawText);
+    }
+
+    function openManualModal(id, rawText) {
         document.getElementById('manual-job-id').value = id;
         document.getElementById('modal-raw-text').textContent = rawText;
         document.getElementById('manual-amount').value = '';

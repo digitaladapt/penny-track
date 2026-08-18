@@ -185,10 +185,13 @@ start() {
     APP_SECRET="$DEV_SECRET" \
     DATABASE_URL="sqlite:///%kernel.project_dir%/${DEV_DB}" \
     DEFAULT_URI="http://localhost:${PORT}" \
-    LLM_API_ENDPOINT="http://localhost:9999/fake" \
+    LLM_API_ENDPOINT="http://zenith.devgnome.com:11434/v1/chat/completions" \
     LLM_API_KEY="dev_llm_key_not_real" \
-    LLM_MODEL="dev-model" \
-    LLM_TIMEOUT="5" \
+    LLM_MODEL="hf.co/HauhauCS/Nemotron3-Nano-4B-Uncensored-HauhauCS-Aggressive:Q4_K_M" \
+    LLM_TIMEOUT="600" \
+    LLM_WORKER_TIMEOUT="600" \
+    MAX_BACKGROUND_JOBS="2" \
+    PARSE_JOB_MAX_ATTEMPTS="1" \
     BUDGET_GOAL="500" \
     php bin/console doctrine:migrations:migrate --no-interaction 2>&1 | tail -5
 
@@ -206,12 +209,15 @@ start() {
     APP_SECRET="$DEV_SECRET" \
     DATABASE_URL="sqlite:///%kernel.project_dir%/${DEV_DB}" \
     DEFAULT_URI="http://localhost:${PORT}" \
-    LLM_API_ENDPOINT="http://localhost:9999/fake" \
+    LLM_API_ENDPOINT="http://zenith.devgnome.com:11434/v1/chat/completions" \
     LLM_API_KEY="dev_llm_key_not_real" \
-    LLM_MODEL="dev-model" \
-    LLM_TIMEOUT="5" \
+    LLM_MODEL="hf.co/HauhauCS/Nemotron3-Nano-4B-Uncensored-HauhauCS-Aggressive:Q4_K_M" \
+    LLM_TIMEOUT="600" \
+    LLM_WORKER_TIMEOUT="600" \
+    MAX_BACKGROUND_JOBS="2" \
+    PARSE_JOB_MAX_ATTEMPTS="1" \
     BUDGET_GOAL="500" \
-    nohup php -S "${HOST}:${PORT}" -t public/ > "$LOG_FILE" 2>&1 &
+    nohup php -S "${HOST}:${PORT}" -t public/ 2>&1 > "$LOG_FILE" 2>&1 &
 
     local pid=$!
     echo "$pid" > "$PID_FILE"

@@ -21,34 +21,42 @@ class ParseJobRepository extends ServiceEntityRepository
     /**
      * Atomically claim the next pending job by setting it to processing.
      * Returns the claimed job or null if none available.
+     *
+     * Uses a transaction with SELECT ... FOR UPDATE to prevent race
+         * conditions where two calls in the same worker cycle could claim
+     * the same job (resulting in duplicate subprocesses).
      */
     public function claimNextPending(): ?ParseJob
     {
         $conn = $this->getEntityManager()->getConnection();
+        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
 
-        // Atomic claim: only update if still pending
-        $conn->executeStatement(
-            'UPDATE parse_job
-             SET status = ?, updated_at = ?
-             WHERE id = (
-                 SELECT id FROM parse_job
+        return $conn->transactional(function () use ($conn, $now): ?ParseJob {
+            // Lock the row for update so concurrent callers can't grab the same job
+            $row = $conn->executeQuery(
+                'SELECT id FROM parse_job
                  WHERE status = ?
                  ORDER BY created_at ASC
-                 LIMIT 1
-             )',
-            [ParseJob::STATUS_PROCESSING, (new \DateTimeImmutable())->format('Y-m-d H:i:s'), ParseJob::STATUS_PENDING]
-        );
+                 LIMIT 1',
+                [ParseJob::STATUS_PENDING]
+            )->fetchAssociative();
 
-        // Fetch the job we just claimed
-        $job = $this->createQueryBuilder('j')
-            ->where('j.status = :status')
-            ->setParameter('status', ParseJob::STATUS_PROCESSING)
-            ->orderBy('j.updatedAt', 'DESC')
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
+            if ($row === false) {
+                return null;
+            }
 
-        return $job;
+            $jobId = (int) $row['id'];
+
+            $conn->executeStatement(
+                'UPDATE parse_job SET status = ?, updated_at = ? WHERE id = ?',
+                [ParseJob::STATUS_PROCESSING, $now, $jobId]
+            );
+
+            // Clear the EM so we get a fresh entity with the updated status
+            $this->getEntityManager()->clear();
+
+            return $this->find($jobId);
+        });
     }
 
     /**
@@ -71,8 +79,8 @@ class ParseJobRepository extends ServiceEntityRepository
     {
         return (int) $this->createQueryBuilder('j')
             ->select('COUNT(j.id)')
-            ->where('j.status = :status')
-            ->setParameter('status', ParseJob::STATUS_PENDING)
+            ->where('j.status IN (:statuses)')
+            ->setParameter('statuses', [ParseJob::STATUS_PENDING, ParseJob::STATUS_PROCESSING])
             ->getQuery()
             ->getSingleScalarResult();
     }
