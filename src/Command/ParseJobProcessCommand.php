@@ -139,10 +139,16 @@ class ParseJobProcessCommand extends Command
                 $parsedDate = new \DateTimeImmutable($parsed['date']);
 
                 // If the LLM returned a date without a time component (midnight),
-                // fall back to the current time so receipts don't all get
-                // timestamped to 00:00:00.
+                // preserve the date but fill in the current time of day so
+                // receipts don't all get timestamped to 00:00:00.
                 if ($parsedDate->format('H:i:s') === '00:00:00') {
-                    $parsedDate = new \DateTimeImmutable();
+                    $now = new \DateTimeImmutable();
+                    $parsedDate = $parsedDate
+                        ->setTime(
+                            (int) $now->format('H'),
+                            (int) $now->format('i'),
+                            (int) $now->format('s')
+                        );
                 }
 
                 $receipt->setCreatedAt($parsedDate);
