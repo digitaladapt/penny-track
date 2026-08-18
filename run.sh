@@ -4,6 +4,7 @@ set -euo pipefail
 
 penny_dir=$(readlink -f "$0" | xargs dirname)
 SCREEN_NAME="penny-track"
+WORKER_SCREEN_NAME="penny-track-worker"
 WORKDIR="$penny_dir/public"
 COMMAND="php -S 0.0.0.0:8000"
 
@@ -29,3 +30,16 @@ else
     fi
 fi
 
+# Start the parse job worker in a separate screen
+if screen -list | grep -q "[.]${WORKER_SCREEN_NAME}[[:space:]]"; then
+    echo "✅ Worker screen '${WORKER_SCREEN_NAME}' is already running."
+else
+    echo "🚀 Creating worker screen '${WORKER_SCREEN_NAME}'..."
+
+    screen -dmS "${WORKER_SCREEN_NAME}" bash -c "
+        cd '${penny_dir}'
+        exec php bin/console app:parse-jobs:worker
+    "
+
+    echo "✅ Worker screen '${WORKER_SCREEN_NAME}' created."
+fi

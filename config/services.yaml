@@ -32,5 +32,14 @@ services:
         bind:
             $budgetGoal: '%app.budget_goal%'
 
+    App\Command\ParseJobWorkerCommand:
+        arguments:
+            $maxBackgroundJobs: '%env(int:MAX_BACKGROUND_JOBS)%'
+            $llmWorkerTimeout: '%env(int:LLM_WORKER_TIMEOUT)%'
+
+    App\Controller\ReceiptController:
+        bind:
+            $parseJobMaxAttempts: '%env(int:PARSE_JOB_MAX_ATTEMPTS)%'
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones

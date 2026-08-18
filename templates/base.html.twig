@@ -72,6 +72,12 @@
                     <span class="hidden sm:inline">Penny-Track</span>
                 </a>
                 <div class="flex items-center space-x-4">
+                    <a href="{{ path('app_parse_jobs') }}" id="parse-jobs-link" class="flex items-center space-x-1 text-white text-sm hover:text-primary-100 transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path></svg>
+                        <span id="parse-jobs-badge-pending" class="hidden bg-blue-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center"></span>
+                        <span id="parse-jobs-badge-failed" class="hidden bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full min-w-[1.25rem] text-center"></span>
+                        <span id="parse-jobs-badge-clear" class="text-green-300 text-xs">✓</span>
+                    </a>
                     <a href="{{ path('app_receipt_new') }}" class="bg-white text-primary-600 px-3 py-1.5 rounded-lg font-semibold text-sm hover:bg-primary-50 transition">
                         + New
                     </a>
@@ -94,5 +100,36 @@
     </main>
 
     {% block javascripts %}{% endblock %}
+
+    {% if app.request.hasPreviousSession or true %}
+    <script>
+        // Fetch and display parse job badge counts in the navbar
+        (async function() {
+            try {
+                const key = window.PennyTrack.getApiKey ? window.PennyTrack.getApiKey() : null;
+                if (!key) return;
+                const res = await window.PennyTrack.apiFetch('{{ path("api_parse_jobs_counts") }}');
+                if (!res.ok) return;
+                const data = await res.json();
+
+                const pendingEl = document.getElementById('parse-jobs-badge-pending');
+                const failedEl = document.getElementById('parse-jobs-badge-failed');
+                const clearEl = document.getElementById('parse-jobs-badge-clear');
+
+                if (data.pending > 0) {
+                    pendingEl.textContent = data.pending;
+                    pendingEl.classList.remove('hidden');
+                    clearEl.classList.add('hidden');
+                }
+                if (data.failed > 0) {
+                    failedEl.textContent = data.failed;
+                    failedEl.classList.remove('hidden');
+                    clearEl.classList.add('hidden');
+                }
+                // If both are zero, the checkmark stays visible
+            } catch (e) { /* silently ignore */ }
+        })();
+    </script>
+    {% endif %}
 </body>
 </html>

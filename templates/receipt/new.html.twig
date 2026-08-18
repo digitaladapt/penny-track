@@ -123,9 +123,9 @@
         if (!text) return;
 
         btn.disabled = true;
-        btn.textContent = 'Parsing...';
+        btn.textContent = 'Queuing...';
         status.className = 'mt-2 text-sm text-blue-600';
-        status.textContent = 'Sending to LLM...';
+        status.textContent = 'Queuing for processing...';
         status.classList.remove('hidden');
 
         try {
@@ -135,14 +135,14 @@
             });
             const data = await res.json();
 
-            if (res.ok || res.status === 202) {
+            if (res.status === 202) {
                 status.className = 'mt-2 text-sm text-green-600';
-                status.textContent = data.warning || `Saved: ${data.receipt.business} - $${data.receipt.amount}`;
+                status.textContent = '✓ Queued! Your transaction is being processed and will appear on the dashboard shortly.';
                 input.value = '';
-                setTimeout(() => window.location.href = '{{ path('app_dashboard') }}', 800);
+                setTimeout(() => window.location.href = '{{ path('app_dashboard') }}', 1500);
             } else {
                 status.className = 'mt-2 text-sm text-red-600';
-                status.textContent = data.errors ? Object.values(data.errors).join(', ') : 'Failed to parse';
+                status.textContent = data.errors ? Object.values(data.errors).join(', ') : (data.error || 'Failed to queue');
             }
         } catch (e) {
             status.className = 'mt-2 text-sm text-red-600';

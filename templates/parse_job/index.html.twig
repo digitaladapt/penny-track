@@ -1,0 +1,257 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Parse Jobs - Penny-Track{% endblock %}
+
+{% block body %}
+<div class="max-w-5xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-gray-900">Parse Jobs</h1>
+        <a href="{{ path('app_receipt_new') }}" class="bg-primary-600 text-white px-4 py-2 rounded-lg font-medium text-sm hover:bg-primary-700 transition">
+            + New Receipt
+        </a>
+    </div>
+
+    {% if jobs is empty %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+        <div class="text-gray-400 text-5xl mb-3">✓</div>
+        <p class="text-gray-500">No pending or failed parse jobs. All caught up!</p>
+    </div>
+    {% else %}
+    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="bg-gray-50 border-b border-gray-200 text-left text-gray-600">
+                    <th class="px-4 py-3 font-medium">Raw Text</th>
+                    <th class="px-4 py-3 font-medium whitespace-nowrap">Status</th>
+                    <th class="px-4 py-3 font-medium whitespace-nowrap">Attempts</th>
+                    <th class="px-4 py-3 font-medium">Last Error</th>
+                    <th class="px-4 py-3 font-medium whitespace-nowrap">Created</th>
+                    <th class="px-4 py-3 font-medium text-right">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+                {% for job in jobs %}
+                <tr id="job-{{ job.id }}" class="hover:bg-gray-50">
+                    <td class="px-4 py-3 max-w-xs">
+                        <div class="text-gray-800 truncate" title="{{ job.rawText }}">{{ job.rawText }}</div>
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap">
+                        {% if job.status == 'pending' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Pending</span>
+                        {% elseif job.status == 'processing' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">Processing</span>
+                        {% elseif job.status == 'failed' %}
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Failed</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-gray-600">
+                        {{ job.attempts }} / {{ job.maxAttempts }}
+                    </td>
+                    <td class="px-4 py-3 max-w-xs">
+                        {% if job.lastError %}
+                            <div class="text-red-600 text-xs truncate" title="{{ job.lastError }}">{{ job.lastError }}</div>
+                        {% else %}
+                            <span class="text-gray-400">—</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-gray-500 text-xs">
+                        {{ job.createdAt|date('M j, Y g:ia') }}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-right">
+                        {% if job.status != 'processing' %}
+                        <div class="flex justify-end gap-2">
+                            <button onclick="manualAdd({{ job.id }})"
+                                class="text-primary-600 hover:text-primary-800 text-xs font-medium px-2 py-1 rounded hover:bg-primary-50 transition">
+                                Manual Add
+                            </button>
+                            {% if job.status == 'failed' or job.status == 'pending' %}
+                            <button onclick="retryJob({{ job.id }})"
+                                class="text-blue-600 hover:text-blue-800 text-xs font-medium px-2 py-1 rounded hover:bg-blue-50 transition">
+                                Retry
+                            </button>
+                            {% endif %}
+                            <button onclick="deleteJob({{ job.id }})"
+                                class="text-red-600 hover:text-red-800 text-xs font-medium px-2 py-1 rounded hover:bg-red-50 transition">
+                                Delete
+                            </button>
+                        </div>
+                        {% else %}
+                        <span class="text-gray-400 text-xs">in progress…</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Manual Add Modal -->
+<div id="manual-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div class="p-6">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-lg font-bold text-gray-900">Manual Add Receipt</h2>
+                <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+            </div>
+
+            <div class="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-4">
+                <div class="text-xs font-medium text-gray-500 mb-1">Original Text</div>
+                <div id="modal-raw-text" class="text-sm text-gray-700"></div>
+            </div>
+
+            <form id="manual-form" class="space-y-4">
+                <input type="hidden" id="manual-job-id">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+                        <input type="number" step="0.01" id="manual-amount" required
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Business *</label>
+                        <input type="text" id="manual-business" required
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Category *</label>
+                        <input type="text" id="manual-category" required list="category-list"
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                        <datalist id="category-list"></datalist>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                        <input type="text" id="manual-location"
+                            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tags (comma separated)</label>
+                    <input type="text" id="manual-tags" placeholder="lunch, work"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea id="manual-notes" rows="2"
+                        class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+                </div>
+                <div id="manual-status" class="text-sm hidden"></div>
+                <div class="flex gap-3 pt-2">
+                    <button type="submit" class="flex-1 bg-primary-600 text-white font-semibold py-2.5 rounded-lg hover:bg-primary-700 transition">
+                        Save & Complete Job
+                    </button>
+                    <button type="button" onclick="closeModal()" class="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
+                        Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load autocomplete categories
+    async function loadCategories() {
+        try {
+            const res = await window.PennyTrack.apiFetch('{{ path("api_autocomplete_categories") }}').then(r => r.json());
+            const dl = document.getElementById('category-list');
+            dl.innerHTML = res.map(c => `<option value="${c}">`).join('');
+        } catch (e) { /* ignore */ }
+    }
+    loadCategories();
+
+    function retryJob(id) {
+        if (!confirm('Retry this parse job?')) return;
+        window.PennyTrack.apiFetch(`{{ path('api_parse_jobs_retry', {id: 'ID'}) }}`.replace('ID', id), {
+            method: 'POST'
+        }).then(r => {
+            if (r.ok) location.reload();
+            else r.json().then(d => alert(d.error || 'Failed to retry'));
+        }).catch(() => alert('Network error'));
+    }
+
+    function deleteJob(id) {
+        if (!confirm('Delete this parse job? This cannot be undone.')) return;
+        window.PennyTrack.apiFetch(`{{ path('api_parse_jobs_delete', {id: 'ID'}) }}`.replace('ID', id), {
+            method: 'DELETE'
+        }).then(r => {
+            if (r.ok) location.reload();
+            else r.json().then(d => alert(d.error || 'Failed to delete'));
+        }).catch(() => alert('Network error'));
+    }
+
+    function manualAdd(id) {
+        const row = document.getElementById('job-' + id);
+        const rawText = row.querySelector('td:first-child > div').textContent;
+
+        document.getElementById('manual-job-id').value = id;
+        document.getElementById('modal-raw-text').textContent = rawText;
+        document.getElementById('manual-amount').value = '';
+        document.getElementById('manual-business').value = '';
+        document.getElementById('manual-category').value = '';
+        document.getElementById('manual-location').value = '';
+        document.getElementById('manual-tags').value = '';
+        document.getElementById('manual-notes').value = rawText;
+
+        const modal = document.getElementById('manual-modal');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.getElementById('manual-amount').focus();
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('manual-modal');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.getElementById('manual-status').classList.add('hidden');
+    }
+
+    document.getElementById('manual-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const jobId = document.getElementById('manual-job-id').value;
+        const status = document.getElementById('manual-status');
+
+        const payload = {
+            amount: parseFloat(document.getElementById('manual-amount').value),
+            business: document.getElementById('manual-business').value,
+            category: document.getElementById('manual-category').value,
+            location: document.getElementById('manual-location').value || null,
+            tags: document.getElementById('manual-tags').value.split(',').map(t => t.trim()).filter(Boolean),
+            notes: document.getElementById('manual-notes').value || null,
+        };
+
+        status.className = 'text-sm text-blue-600';
+        status.textContent = 'Saving...';
+        status.classList.remove('hidden');
+
+        try {
+            const url = `{{ path('api_parse_jobs_manual_add', {id: 'ID'}) }}`.replace('ID', jobId);
+            const res = await window.PennyTrack.apiFetch(url, {
+                method: 'POST',
+                body: payload
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                status.className = 'text-sm text-green-600';
+                status.textContent = 'Receipt saved!';
+                setTimeout(() => location.reload(), 600);
+            } else {
+                status.className = 'text-sm text-red-600';
+                status.textContent = data.errors ? Object.values(data.errors).join(', ') : (data.error || 'Failed to save');
+            }
+        } catch (err) {
+            status.className = 'text-sm text-red-600';
+            status.textContent = 'Network error';
+        }
+    });
+
+    // Close modal on backdrop click
+    document.getElementById('manual-modal').addEventListener('click', (e) => {
+        if (e.target === document.getElementById('manual-modal')) closeModal();
+    });
+</script>
+{% endblock %}
