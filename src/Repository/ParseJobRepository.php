@@ -71,8 +71,8 @@ class ParseJobRepository extends ServiceEntityRepository
     {
         return (int) $this->createQueryBuilder('j')
             ->select('COUNT(j.id)')
-            ->where('j.status = :status')
-            ->setParameter('status', ParseJob::STATUS_PENDING)
+            ->where('j.status IN (:statuses)')
+            ->setParameter('statuses', [ParseJob::STATUS_PENDING, ParseJob::STATUS_PROCESSING])
             ->getQuery()
             ->getSingleScalarResult();
     }
