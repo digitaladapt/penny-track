@@ -19,6 +19,9 @@ services:
       LLM_API_KEY: ${LLM_API_KEY:-change-me}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       LLM_TIMEOUT: ${LLM_TIMEOUT:-10}
+      MAX_BACKGROUND_JOBS: ${MAX_BACKGROUND_JOBS:-2}
+      LLM_WORKER_TIMEOUT: ${LLM_WORKER_TIMEOUT:-600}
+      PARSE_JOB_MAX_ATTEMPTS: ${PARSE_JOB_MAX_ATTEMPTS:-1}
       MAILER_DSN: ${MAILER_DSN:-null://null}
     restart: unless-stopped
     networks:

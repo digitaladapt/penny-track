@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Controller;
 
+use App\Entity\ParseJob;
 use App\Entity\Receipt;
 use App\Repository\ReceiptRepository;
-use App\Service\LLM\LlmClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -21,7 +21,7 @@ class ReceiptController extends AbstractController
         private readonly ReceiptRepository $receiptRepository,
         private readonly EntityManagerInterface $entityManager,
         private readonly ValidatorInterface $validator,
-        private readonly LlmClient $llmClient,
+        private readonly int $parseJobMaxAttempts = 1,
     ) {
     }
 
@@ -131,64 +131,19 @@ class ReceiptController extends AbstractController
             return new JsonResponse(['error' => 'Text is required'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
-        $systemPrompt = $this->buildSystemPrompt();
+        $job = new ParseJob();
+        $job->setRawText($text);
+        $job->setStatus(ParseJob::STATUS_PENDING);
+        $job->setMaxAttempts($this->parseJobMaxAttempts);
 
-        try {
-            $parsed = $this->llmClient->chat([
-                ['role' => 'system', 'content' => $systemPrompt],
-                ['role' => 'user', 'content' => $text],
-            ]);
-        } catch (\Throwable $e) {
-            // Fallback: store raw text for manual review
-            $receipt = new Receipt();
-            $receipt->setAmount('0.00');
-            $receipt->setBusiness('Unknown');
-            $receipt->setCategory('Other');
-            $receipt->setRawInput($text);
-            $receipt->setNotes('LLM parsing failed: ' . $e->getMessage() . "\n\nOriginal: " . $text);
-            $this->entityManager->persist($receipt);
-            $this->entityManager->flush();
-
-            return new JsonResponse([
-                'receipt' => $this->serializeReceipt($receipt),
-                'parsed' => null,
-                'warning' => 'Could not parse automatically. Saved for manual review.',
-            ], Response::HTTP_ACCEPTED);
-        }
-
-        $receipt = new Receipt();
-        $receipt->setAmount(isset($parsed['amount']) && is_numeric($parsed['amount']) ? number_format((float) $parsed['amount'], 2, '.', '') : '0.00');
-        $receipt->setBusiness($parsed['business'] ?? 'Unknown');
-        $receipt->setCategory($parsed['category'] ?? 'Other');
-        $receipt->setLocation($parsed['location'] ?? null);
-        $receipt->setTags($parsed['tags'] ?? []);
-        $receipt->setNotes($parsed['notes'] ?? $text);
-        $receipt->setRawInput($text);
-
-        if (!empty($parsed['date'])) {
-            try {
-                $receipt->setCreatedAt(new \DateTimeImmutable($parsed['date']));
-            } catch (\Throwable) {
-                // keep default
-            }
-        }
-
-        $errors = $this->validator->validate($receipt);
-        if (count($errors) > 0) {
-            $messages = [];
-            foreach ($errors as $error) {
-                $messages[$error->getPropertyPath()] = $error->getMessage();
-            }
-            return new JsonResponse(['errors' => $messages, 'parsed' => $parsed], Response::HTTP_UNPROCESSABLE_ENTITY);
-        }
-
-        $this->entityManager->persist($receipt);
+        $this->entityManager->persist($job);
         $this->entityManager->flush();
 
         return new JsonResponse([
-            'receipt' => $this->serializeReceipt($receipt),
-            'parsed' => $parsed,
-        ], Response::HTTP_CREATED);
+            'job_id' => $job->getId(),
+            'status' => 'queued',
+            'message' => 'Your transaction is being processed. It will appear on the dashboard shortly.',
+        ], Response::HTTP_ACCEPTED);
     }
 
     #[Route('/api/autocomplete/businesses', name: 'api_autocomplete_businesses', methods: ['GET'])]
@@ -262,27 +217,5 @@ class ReceiptController extends AbstractController
         return $receipt;
     }
 
-    private function buildSystemPrompt(): string
-    {
-        $today = (new \DateTimeImmutable())->format('Y-m-d');
 
-        return <<<PROMPT
-You are a receipt parsing assistant. Extract expense details from the user's message and return ONLY a JSON object with these fields:
-- amount: number (required, in dollars)
-- business: string (required, merchant name)
-- category: string (required, one of: Food, Transport, Utilities, Entertainment, Shopping, Health, Other)
-- location: string or null
-- tags: array of strings or empty array
-- notes: string or null (include the original message here)
-- date: ISO 8601 datetime or null (infer from relative terms like "today", "yesterday", "last Tuesday")
-
-Rules:
-- If a field cannot be determined, use null (except amount, business, category which are required)
-- For category, choose the best fit; default to "Other" if uncertain
-- Normalize business names (capitalize properly)
-- Today is: {$today}
-
-Respond with ONLY the JSON object, no markdown, no explanation.
-PROMPT;
-    }
 }
