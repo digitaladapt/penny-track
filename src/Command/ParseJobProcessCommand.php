@@ -160,7 +160,22 @@ class ParseJobProcessCommand extends Command
 
         if (!empty($parsed['date'])) {
             try {
-                $receipt->setCreatedAt(new \DateTimeImmutable($parsed['date']));
+                $parsedDate = new \DateTimeImmutable($parsed['date']);
+
+                // If the LLM returned a date without a time component (midnight),
+                // preserve the date but fill in the current time of day so
+                // receipts don't all get timestamped to 00:00:00.
+                if ($parsedDate->format('H:i:s') === '00:00:00') {
+                    $now = new \DateTimeImmutable();
+                    $parsedDate = $parsedDate
+                        ->setTime(
+                            (int) $now->format('H'),
+                            (int) $now->format('i'),
+                            (int) $now->format('s')
+                        );
+                }
+
+                $receipt->setCreatedAt($parsedDate);
             } catch (\Throwable) {
                 // keep default
             }
@@ -171,7 +186,8 @@ class ParseJobProcessCommand extends Command
 
     private function buildSystemPrompt(): string
     {
-        $today = (new \DateTimeImmutable())->format('Y-m-d');
+        $now = new \DateTimeImmutable();
+        $nowFormatted = $now->format('Y-m-d\\TH:i:s');
 
         return <<<PROMPT
 You are a receipt parsing assistant. Extract expense details from the user's message and return ONLY a JSON object with these fields:
@@ -181,13 +197,17 @@ You are a receipt parsing assistant. Extract expense details from the user's mes
 - location: string or null
 - tags: array of strings or empty array
 - notes: string or null (include the original message here)
-- date: ISO 8601 datetime or null (infer from relative terms like "today", "yesterday", "last Tuesday")
+- date: ISO 8601 datetime string (e.g. "{$nowFormatted}") or null
 
 Rules:
 - If a field cannot be determined, use null (except amount, business, category which are required)
 - For category, choose the best fit; default to "Other" if uncertain
 - Normalize business names (capitalize properly)
-- Today is: {$today}
+- Current date and time is: {$nowFormatted}
+- When the user says "today" without a specific time, use: {$nowFormatted}
+- When the user says "yesterday", subtract one day but keep a reasonable time of day
+- Infer the time of day from context when possible (e.g. "lunch" → around 12:00, "dinner" → around 19:00, "morning coffee" → around 08:00)
+- Always include a time component in the datetime, never just a date
 
 Respond with ONLY the JSON object, no markdown, no explanation.
 PROMPT;
