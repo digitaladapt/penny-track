@@ -27,4 +27,19 @@ class ApiKeyRepository extends ServiceEntityRepository
 
         return $count > 0;
     }
+
+    /**
+     * Fetch the first stored API key.
+     *
+     * This is a single-user app, so there is only ever one key.
+     * Using this instead of findAll() avoids loading all rows into memory
+     * and signals the single-key assumption to future maintainers.
+     */
+    public function findFirst(): ?ApiKey
+    {
+        return $this->createQueryBuilder('a')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
 }

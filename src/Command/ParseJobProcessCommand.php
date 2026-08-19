@@ -122,16 +122,40 @@ class ParseJobProcessCommand extends Command
     private function createReceiptFromParsed(array $parsed, string $rawText): Receipt
     {
         $receipt = new Receipt();
+
+        // Validate amount: must be numeric
+        $amount = $parsed['amount'] ?? null;
         $receipt->setAmount(
-            isset($parsed['amount']) && is_numeric($parsed['amount'])
-                ? number_format((float) $parsed['amount'], 2, '.', '')
+            is_numeric($amount)
+                ? number_format((float) $amount, 2, '.', '')
                 : '0.00'
         );
-        $receipt->setBusiness($parsed['business'] ?? 'Unknown');
-        $receipt->setCategory($parsed['category'] ?? 'Other');
-        $receipt->setLocation($parsed['location'] ?? null);
-        $receipt->setTags($parsed['tags'] ?? []);
-        $receipt->setNotes($parsed['notes'] ?? $rawText);
+
+        // Validate business: must be a string
+        $business = $parsed['business'] ?? 'Unknown';
+        $receipt->setBusiness(is_string($business) && $business !== '' ? $business : 'Unknown');
+
+        // Validate category: must be a string
+        $category = $parsed['category'] ?? 'Other';
+        $receipt->setCategory(is_string($category) && $category !== '' ? $category : 'Other');
+
+        // Validate location: must be a string or null
+        $location = $parsed['location'] ?? null;
+        $receipt->setLocation(is_string($location) && $location !== '' ? $location : null);
+
+        // Validate tags: must be an array of strings
+        $tags = $parsed['tags'] ?? [];
+        if (is_array($tags)) {
+            $tags = array_values(array_filter($tags, fn ($t) => is_string($t)));
+        } else {
+            $tags = [];
+        }
+        $receipt->setTags($tags);
+
+        // Validate notes: must be a string or null
+        $notes = $parsed['notes'] ?? $rawText;
+        $receipt->setNotes(is_string($notes) && $notes !== '' ? $notes : $rawText);
+
         $receipt->setRawInput($rawText);
 
         if (!empty($parsed['date'])) {

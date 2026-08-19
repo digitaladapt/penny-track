@@ -65,6 +65,9 @@ class ReceiptController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
+        if (!is_array($data)) {
+            return new JsonResponse(['error' => 'Invalid JSON body'], Response::HTTP_BAD_REQUEST);
+        }
         $receipt = $this->hydrateReceipt(new Receipt(), $data);
 
         $errors = $this->validator->validate($receipt);
@@ -91,6 +94,9 @@ class ReceiptController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
+        if (!is_array($data)) {
+            return new JsonResponse(['error' => 'Invalid JSON body'], Response::HTTP_BAD_REQUEST);
+        }
         $receipt = $this->hydrateReceipt($receipt, $data);
 
         $errors = $this->validator->validate($receipt);
@@ -125,6 +131,9 @@ class ReceiptController extends AbstractController
     public function parse(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
+        if (!is_array($data)) {
+            return new JsonResponse(['error' => 'Invalid JSON body'], Response::HTTP_BAD_REQUEST);
+        }
         $text = trim($data['text'] ?? '');
 
         if ($text === '') {

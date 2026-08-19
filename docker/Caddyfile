@@ -7,6 +7,14 @@
 	root * /app/public
 	encode zstd gzip
 
+	# Security headers
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+		Referrer-Policy strict-origin-when-cross-origin
+		X-XSS-Protection "1; mode=block"
+	}
+
 	# Symfony front controller — worker mode is activated via FRANKENPHP_WORKER env var
 	php_server {
 		worker /app/public/index.php

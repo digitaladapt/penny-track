@@ -87,6 +87,9 @@ class ParseJobController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
+        if (!is_array($data)) {
+            return new JsonResponse(['error' => 'Invalid JSON body'], Response::HTTP_BAD_REQUEST);
+        }
 
         $receipt = new Receipt();
         $receipt->setAmount(

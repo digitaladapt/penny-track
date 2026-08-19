@@ -63,13 +63,14 @@ class AuthController extends AbstractController
     public function verify(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
+        if (!is_array($data)) {
+            return new JsonResponse(['error' => 'Invalid JSON body'], Response::HTTP_BAD_REQUEST);
+        }
         $providedKey = $data['api_key'] ?? '';
 
-        $apiKeys = $this->apiKeyRepository->findAll();
-        foreach ($apiKeys as $key) {
-            if (password_verify($providedKey, $key->getKeyHash())) {
-                return new JsonResponse(['valid' => true]);
-            }
+        $apiKeyEntity = $this->apiKeyRepository->findFirst();
+        if ($apiKeyEntity !== null && password_verify($providedKey, $apiKeyEntity->getKeyHash())) {
+            return new JsonResponse(['valid' => true]);
         }
 
         return new JsonResponse(['valid' => false], Response::HTTP_UNAUTHORIZED);
