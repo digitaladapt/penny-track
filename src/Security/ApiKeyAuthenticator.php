@@ -35,14 +35,11 @@ class ApiKeyAuthenticator extends AbstractAuthenticator
             throw new CustomUserMessageAuthenticationException('No API key provided');
         }
 
-        $apiKeys = $this->apiKeyRepository->findAll();
+        $apiKeyEntity = $this->apiKeyRepository->findFirst();
         $valid = false;
 
-        foreach ($apiKeys as $key) {
-            if (password_verify($apiKey, $key->getKeyHash())) {
-                $valid = true;
-                break;
-            }
+        if ($apiKeyEntity !== null) {
+            $valid = password_verify($apiKey, $apiKeyEntity->getKeyHash());
         }
 
         if (!$valid) {
