@@ -176,6 +176,82 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(401);
     }
 
+    public function testCreateDuplicateReceiptWithin5MinutesIsRejected(): void
+    {
+        // First receipt – should succeed
+        $this->client->request('POST', '/api/receipts', [], [], [
+            'HTTP_X_API_KEY' => $this->apiKey,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'amount' => 42.50,
+            'business' => 'CoffeeShop',
+            'category' => 'Food',
+        ]));
+        $this->assertResponseStatusCodeSame(201);
+
+        // Second identical receipt within 5 minutes – should be rejected as duplicate
+        $this->client->request('POST', '/api/receipts', [], [], [
+            'HTTP_X_API_KEY' => $this->apiKey,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'amount' => 42.50,
+            'business' => 'CoffeeShop',
+            'category' => 'Food',
+        ]));
+        $this->assertResponseStatusCodeSame(409);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertArrayHasKey('error', $data);
+        $this->assertStringContainsString('duplicate', $data['error']);
+    }
+
+    public function testCreateReceiptAfter5MinutesIsAllowed(): void
+    {
+        // Seed a receipt 6 minutes ago
+        $receipt = new Receipt();
+        $receipt->setAmount('55.00');
+        $receipt->setBusiness('OldCafe');
+        $receipt->setCategory('Food');
+        $receipt->setCreatedAt(new \DateTimeImmutable('-6 minutes'));
+        $this->em->persist($receipt);
+        $this->em->flush();
+
+        // Same details now – should be allowed (outside the 5-minute window)
+        $this->client->request('POST', '/api/receipts', [], [], [
+            'HTTP_X_API_KEY' => $this->apiKey,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'amount' => 55.00,
+            'business' => 'OldCafe',
+            'category' => 'Food',
+        ]));
+        $this->assertResponseStatusCodeSame(201);
+    }
+
+    public function testCreateReceiptWithDifferentBusinessIsAllowed(): void
+    {
+        // First receipt
+        $this->client->request('POST', '/api/receipts', [], [], [
+            'HTTP_X_API_KEY' => $this->apiKey,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'amount' => 30.00,
+            'business' => 'StoreA',
+            'category' => 'Shopping',
+        ]));
+        $this->assertResponseStatusCodeSame(201);
+
+        // Same amount and category but different business – should be allowed
+        $this->client->request('POST', '/api/receipts', [], [], [
+            'HTTP_X_API_KEY' => $this->apiKey,
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode([
+            'amount' => 30.00,
+            'business' => 'StoreB',
+            'category' => 'Shopping',
+        ]));
+        $this->assertResponseStatusCodeSame(201);
+    }
+
     public function testAutocomplete(): void
     {
         $receipt = new Receipt();

@@ -165,6 +165,68 @@ class ReceiptRepositoryTest extends KernelTestCase
         $this->assertIsArray($averages);
     }
 
+    public function testFindRecentDuplicateFindsMatch(): void
+    {
+        $now = new \DateTimeImmutable();
+        $twoMinutesAgo = $now->modify('-2 minutes');
+
+        $r = new Receipt();
+        $r->setAmount('25.00');
+        $r->setBusiness('Target');
+        $r->setCategory('Shopping');
+        $r->setCreatedAt($twoMinutesAgo);
+        $this->em->persist($r);
+        $this->em->flush();
+
+        $fiveMinutesAgo = $now->modify('-5 minutes');
+        $result = $this->repository->findRecentDuplicate('25.00', 'Target', 'Shopping', $fiveMinutesAgo, $now);
+
+        $this->assertNotNull($result);
+        $this->assertSame('Target', $result->getBusiness());
+        $this->assertSame('25.00', $result->getAmount());
+    }
+
+    public function testFindRecentDuplicateReturnsNullWhenOutsideWindow(): void
+    {
+        $now = new \DateTimeImmutable();
+        $sixMinutesAgo = $now->modify('-6 minutes');
+
+        $r = new Receipt();
+        $r->setAmount('25.00');
+        $r->setBusiness('Target');
+        $r->setCategory('Shopping');
+        $r->setCreatedAt($sixMinutesAgo);
+        $this->em->persist($r);
+        $this->em->flush();
+
+        $fiveMinutesAgo = $now->modify('-5 minutes');
+        $result = $this->repository->findRecentDuplicate('25.00', 'Target', 'Shopping', $fiveMinutesAgo, $now);
+
+        $this->assertNull($result);
+    }
+
+    public function testFindRecentDuplicateReturnsNullWhenFieldsDiffer(): void
+    {
+        $now = new \DateTimeImmutable();
+
+        $r = new Receipt();
+        $r->setAmount('25.00');
+        $r->setBusiness('Target');
+        $r->setCategory('Shopping');
+        $r->setCreatedAt($now);
+        $this->em->persist($r);
+        $this->em->flush();
+
+        $fiveMinutesAgo = $now->modify('-5 minutes');
+
+        // Different amount
+        $this->assertNull($this->repository->findRecentDuplicate('99.00', 'Target', 'Shopping', $fiveMinutesAgo, $now));
+        // Different business
+        $this->assertNull($this->repository->findRecentDuplicate('25.00', 'Walmart', 'Shopping', $fiveMinutesAgo, $now));
+        // Different category
+        $this->assertNull($this->repository->findRecentDuplicate('25.00', 'Target', 'Food', $fiveMinutesAgo, $now));
+    }
+
     public function testGetLargestReceiptInDateRange(): void
     {
         $now = new \DateTimeImmutable();
