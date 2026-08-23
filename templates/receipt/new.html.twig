@@ -78,7 +78,7 @@
         </div>
 
         <div class="flex gap-3 pt-2">
-            <button type="submit" class="flex-1 bg-primary-600 text-white font-semibold py-3 rounded-lg hover:bg-primary-700 transition shadow">
+            <button type="submit" id="save-receipt-btn" class="flex-1 bg-primary-600 text-white font-semibold py-3 rounded-lg hover:bg-primary-700 transition shadow disabled:opacity-50 disabled:cursor-not-allowed">
                 Save Receipt
             </button>
             <a href="{{ path('app_dashboard') }}" class="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition">
@@ -159,11 +159,20 @@
 
     // Manual form submit
     const manualForm = document.getElementById('manual-form');
+    const saveBtn = document.getElementById('save-receipt-btn');
+    const saveBtnOriginalText = saveBtn.textContent;
+
     manualForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const form = e.target;
         const status = document.getElementById('form-status');
         const fd = new FormData(form);
+
+        // Disable the submit button to prevent double-submission.
+        // It stays disabled until we get a response back (success or error).
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving...';
+        status.classList.add('hidden');
 
         const createdAt = fd.get('created_at');
         const payload = {
@@ -191,13 +200,17 @@
                 setTimeout(() => window.location.href = '{{ path('app_dashboard') }}', 600);
             } else {
                 status.className = 'text-sm text-red-600';
-                status.textContent = data.errors ? Object.values(data.errors).join(', ') : 'Failed to save';
+                status.textContent = data.errors ? Object.values(data.errors).join(', ') : (data.error || 'Failed to save');
                 status.classList.remove('hidden');
             }
         } catch (err) {
             status.className = 'text-sm text-red-600';
             status.textContent = 'Network error';
             status.classList.remove('hidden');
+        } finally {
+            // Re-enable the button regardless of outcome.
+            saveBtn.disabled = false;
+            saveBtn.textContent = saveBtnOriginalText;
         }
     });
 

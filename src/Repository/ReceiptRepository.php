@@ -248,6 +248,42 @@ class ReceiptRepository extends ServiceEntityRepository
     }
 
     /**
+     * Find a duplicate receipt: same amount, business, and category created
+     * within the given number of minutes before the reference time.
+     *
+     * @param string               $amount   Normalized amount string (e.g. "45.50")
+     * @param string               $business Business name
+     * @param string               $category Category name
+     * @param \DateTimeInterface   $since    Lower-bound datetime (inclusive)
+     * @param \DateTimeInterface   $until    Upper-bound datetime (inclusive)
+     *
+     * @return Receipt|null The first matching receipt, or null if none found
+     */
+    public function findRecentDuplicate(
+        string $amount,
+        string $business,
+        string $category,
+        \DateTimeInterface $since,
+        \DateTimeInterface $until,
+    ): ?Receipt {
+        return $this->createQueryBuilder('r')
+            ->where('r.amount = :amount')
+            ->andWhere('r.business = :business')
+            ->andWhere('r.category = :category')
+            ->andWhere('r.createdAt >= :since')
+            ->andWhere('r.createdAt <= :until')
+            ->setParameter('amount', $amount)
+            ->setParameter('business', $business)
+            ->setParameter('category', $category)
+            ->setParameter('since', $since)
+            ->setParameter('until', $until)
+            ->orderBy('r.createdAt', 'DESC')
+            ->setMaxResults(1)
+            ->getQuery()
+            ->getOneOrNullResult();
+    }
+
+    /**
      * Return the receipt with the largest amount in the given date range.
      *
      * @return array{id: int, business: string, amount: float, date: string}|null

@@ -79,6 +79,25 @@ class ReceiptController extends AbstractController
             return new JsonResponse(['errors' => $messages], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
+        // Duplicate detection: reject if an identical receipt (same amount,
+        // business, and category) was created within the last 5 minutes.
+        $now = new \DateTimeImmutable();
+        $fiveMinutesAgo = $now->modify('-5 minutes');
+        $createdAt = $receipt->getCreatedAt() ?? $now;
+        $duplicate = $this->receiptRepository->findRecentDuplicate(
+            $receipt->getAmount() ?? '',
+            $receipt->getBusiness() ?? '',
+            $receipt->getCategory() ?? '',
+            $fiveMinutesAgo,
+            $createdAt,
+        );
+        if ($duplicate !== null) {
+            return new JsonResponse(
+                ['error' => 'A receipt with the same amount, business, and category was logged within the last 5 minutes. Possible duplicate submission.'],
+                Response::HTTP_CONFLICT,
+            );
+        }
+
         $this->entityManager->persist($receipt);
         $this->entityManager->flush();
 
