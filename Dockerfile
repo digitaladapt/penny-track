@@ -10,7 +10,7 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# Build arg for application version (pass with --build-arg APP_VERSION=v1.3.0 in CI)
+# Build arg for application version (pass with --build-arg APP_VERSION=v2.0.0 in CI)
 ARG APP_VERSION=dev
 
 # Copy only manifests first for better layer caching

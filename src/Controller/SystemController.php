@@ -13,7 +13,7 @@ use Symfony\Component\Routing\Attribute\Route;
 class SystemController extends AbstractController
 {
     private const string APP_NAME = 'penny-track';
-    private const string FALLBACK_VERSION = '1.5.0';
+    private const string FALLBACK_VERSION = '2.0.0';
 
     public function __construct(
         private readonly Connection $connection,
