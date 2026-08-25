@@ -8,6 +8,8 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     env(BUDGET_GOAL): '0'
+    env(DATABASE_URL): 'sqlite:///%kernel.project_dir%/var/data/penny_track.db'
+    env(DEFAULT_URI): 'http://localhost'
     app.budget_goal: '%env(float:BUDGET_GOAL)%'
 
 services:

@@ -17,6 +17,7 @@ ARG APP_VERSION=dev
 COPY composer.json composer.lock symfony.lock ./
 
 RUN composer install --no-dev --no-interaction --no-scripts
+RUN composer dump-env prod --empty
 
 # Copy the rest of the application
 COPY . .
