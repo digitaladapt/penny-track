@@ -20,8 +20,18 @@
 #   bin/dev.sh status    Check if the dev server is running
 #   bin/dev.sh restart   Stop and start the dev server
 #
+# Public URL the dev server is exposed at (reverse proxy). Can be overridden via
+# PENNY_DEV_URL; falls back to PENNY_DEV_DOMAIN, then a generic example domain.
+# The LLM endpoint defaults to the local Ollama instance; override via
+# PENNY_LLM_ENDPOINT (and optionally PENNY_LLM_MODEL / PENNY_LLM_KEY).
+PENNY_DEV_DOMAIN="${PENNY_DEV_DOMAIN:-penny.example.com}"
+PENNY_DEV_URL="${PENNY_DEV_URL:-https://${PENNY_DEV_DOMAIN}}"
+PENNY_LLM_ENDPOINT="${PENNY_LLM_ENDPOINT:-http://localhost:11434/v1/chat/completions}"
+PENNY_LLM_MODEL="${PENNY_LLM_MODEL:-dev-model}"
+PENNY_LLM_KEY="${PENNY_LLM_KEY:-dev_llm_key_not_real}"
+
 # Port assignment (dial-pad mnemonic: P-E-N = 7-3-6):
-#   8736 → https://penny.lyra-dev.devgnome.com
+#   8736 → $PENNY_DEV_URL
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -97,7 +107,7 @@ print_status() {
         echo "   PID:     $pid"
         echo "   URL:     http://localhost:${PORT}"
         echo "   Exposed: http://${HOST}:${PORT}"
-        echo "   Dev URL: https://penny.lyra-dev.devgnome.com"
+        echo "   Dev URL: ${PENNY_DEV_URL}"
         echo "   DB:      ${DEV_DB}"
         echo "   Logs:    ${LOG_FILE}"
     else
@@ -184,10 +194,10 @@ start() {
     APP_DEBUG=1 \
     APP_SECRET="$DEV_SECRET" \
     DATABASE_URL="sqlite:///%kernel.project_dir%/${DEV_DB}" \
-    DEFAULT_URI="http://localhost:${PORT}" \
-    LLM_API_ENDPOINT="http://zenith.devgnome.com:11434/v1/chat/completions" \
-    LLM_API_KEY="dev_llm_key_not_real" \
-    LLM_MODEL="hf.co/HauhauCS/Nemotron3-Nano-4B-Uncensored-HauhauCS-Aggressive:Q4_K_M" \
+    DEFAULT_URI="${PENNY_DEV_URL}" \
+    LLM_API_ENDPOINT="${PENNY_LLM_ENDPOINT}" \
+    LLM_API_KEY="${PENNY_LLM_KEY}" \
+    LLM_MODEL="${PENNY_LLM_MODEL}" \
     LLM_TIMEOUT="600" \
     LLM_WORKER_TIMEOUT="600" \
     MAX_BACKGROUND_JOBS="2" \
@@ -208,10 +218,10 @@ start() {
     APP_DEBUG=1 \
     APP_SECRET="$DEV_SECRET" \
     DATABASE_URL="sqlite:///%kernel.project_dir%/${DEV_DB}" \
-    DEFAULT_URI="http://localhost:${PORT}" \
-    LLM_API_ENDPOINT="http://zenith.devgnome.com:11434/v1/chat/completions" \
-    LLM_API_KEY="dev_llm_key_not_real" \
-    LLM_MODEL="hf.co/HauhauCS/Nemotron3-Nano-4B-Uncensored-HauhauCS-Aggressive:Q4_K_M" \
+    DEFAULT_URI="${PENNY_DEV_URL}" \
+    LLM_API_ENDPOINT="${PENNY_LLM_ENDPOINT}" \
+    LLM_API_KEY="${PENNY_LLM_KEY}" \
+    LLM_MODEL="${PENNY_LLM_MODEL}" \
     LLM_TIMEOUT="600" \
     LLM_WORKER_TIMEOUT="600" \
     MAX_BACKGROUND_JOBS="2" \

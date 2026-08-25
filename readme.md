@@ -18,6 +18,7 @@ A fast, mobile-responsive web application for tracking personal expenses and rec
 - **Frontend**: Twig + Tailwind CSS + Chart.js
 - **Testing**: PHPUnit (unit + functional)
 - **Container**: FrankenPHP (Caddy-based, PHP worker mode)
+- **License**: MIT
 
 ## Quick Start
 
@@ -25,8 +26,8 @@ A fast, mobile-responsive web application for tracking personal expenses and rec
 
 ```bash
 # Clone and configure
-cp .env .env.local
-# Edit .env.local: set APP_SECRET, LLM_API_KEY
+cp .env.example .env
+# Edit .env: set APP_SECRET, LLM_API_KEY (generate one: php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;')
 
 # Build and run
 docker compose up -d --build
@@ -92,6 +93,13 @@ Supports any OpenAI-compatible API (Ollama, LM Studio, etc.).
 | `LLM_API_KEY`       | `change-me`                    | LLM API key                      |
 | `LLM_MODEL`         | `gpt-4o-mini`                  | LLM model name                   |
 | `LLM_TIMEOUT`       | `10`                           | LLM request timeout (seconds)    |
+| `BUDGET_GOAL`       | `0` (disabled)                | Monthly budget goal in dollars; a goal line is drawn on the dashboard when > 0 |
+| `MAX_BACKGROUND_JOBS` | `2`                        | Concurrent LLM parse jobs        |
+| `LLM_WORKER_TIMEOUT` | `600`                         | Per-job timeout (seconds) for the parse-job worker |
+| `PARSE_JOB_MAX_ATTEMPTS` | `1`                    | Retries before a parse job is marked failed |
+| `MAILER_DSN`        | `null://null`                  | Symfony mailer DSN               |
+| `DEFAULT_URI`       | `https://penny.example.com`    | Base URL for CLI-generated links |
+| `APP_SHARE_DIR`     | `var/share`                    | Shared file directory            |
 | `APP_VERSION`       | `dev`                          | Build version (for `/api/about`) |
 
 ## API Endpoints
@@ -130,4 +138,4 @@ Supports any OpenAI-compatible API (Ollama, LM Studio, etc.).
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE) for details.

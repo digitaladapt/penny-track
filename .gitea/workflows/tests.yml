@@ -45,6 +45,9 @@ jobs:
           key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
           restore-keys: ${{ runner.os }}-composer-
 
+      - name: Create .env from .env.test
+        run: cp .env.test .env
+
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist
 
