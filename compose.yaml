@@ -23,6 +23,7 @@ services:
       LLM_WORKER_TIMEOUT: ${LLM_WORKER_TIMEOUT:-600}
       PARSE_JOB_MAX_ATTEMPTS: ${PARSE_JOB_MAX_ATTEMPTS:-1}
       MAILER_DSN: ${MAILER_DSN:-null://null}
+      BUDGET_GOAL: ${BUDGET_GOAL:-0}
     restart: unless-stopped
     networks:
       - public
