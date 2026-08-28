@@ -2,9 +2,15 @@ name: Tests
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - 'main'
+      - 'feat*'
+      - 'fix*'
+      - 'cleanup*'
+      - 'chore*'
   pull_request_target:
-    branches: [main, develop]
+    branches:
+      - 'main'
 
 jobs:
   test:
