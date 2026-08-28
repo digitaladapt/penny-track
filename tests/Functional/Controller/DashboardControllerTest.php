@@ -72,6 +72,55 @@ class DashboardControllerTest extends WebTestCase
         $this->assertCount(2, $data);
     }
 
+    public function testSpendingByCategoryWithValidFromTo(): void
+    {
+        $r = new Receipt();
+        $r->setAmount('42.00');
+        $r->setBusiness('A');
+        $r->setCategory('Food');
+        $r->setCreatedAt(new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $this->em->persist($r);
+        $this->em->flush();
+
+        $this->client->request(
+            'GET',
+            '/api/dashboard/spending-by-category?from=2025-01-01&to=2025-12-31',
+            [],
+            [],
+            ['HTTP_X_API_KEY' => $this->apiKey]
+        );
+
+        $this->assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertCount(1, $data);
+        $this->assertSame('Food', $data[0]['category']);
+        $this->assertEqualsWithDelta(42.00, (float) $data[0]['total'], 0.01);
+    }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidDateRangeProvider')]
+    public function testSpendingByCategoryRejectsInvalidDateRange(string $query): void
+    {
+        $this->client->request('GET', "/api/dashboard/spending-by-category?{$query}", [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
+
+        $this->assertResponseStatusCodeSame(400);
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertIsArray($data);
+        $this->assertArrayHasKey('error', $data);
+    }
+
+    public static function invalidDateRangeProvider(): array
+    {
+        return [
+            'malformed from' => ['from=not-a-date&to=2025-01-31'],
+            'malformed to' => ['from=2025-01-01&to=garbage'],
+            'out of range from' => ['from=2025-13-45&to=2025-01-31'],
+            'empty from' => ['from=&to=2025-01-31'],
+            'empty to' => ['from=2025-01-01&to='],
+            'whitespace from' => ['from=%20%20&to=2025-01-31'],
+            'from after to' => ['from=2025-12-31&to=2025-01-01'],
+        ];
+    }
+
     public function testInsights(): void
     {
         $this->client->request('GET', '/api/dashboard/insights', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);

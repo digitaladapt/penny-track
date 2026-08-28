@@ -62,8 +62,22 @@ class DashboardController extends AbstractController
         $now = new \DateTimeImmutable();
 
         if ($request->query->has('from') && $request->query->has('to')) {
-            $from = new \DateTimeImmutable($request->query->get('from'));
-            $to   = new \DateTimeImmutable($request->query->get('to'));
+            $from = $this->parseDateParam($request->query->get('from'));
+            $to   = $this->parseDateParam($request->query->get('to'));
+
+            if ($from === null || $to === null) {
+                return new JsonResponse(
+                    ['error' => "Invalid date range. 'from' and 'to' must be valid dates (e.g. 2025-01-01)."],
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
+
+            if ($to < $from) {
+                return new JsonResponse(
+                    ['error' => "Invalid date range. 'to' must not be before 'from'."],
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
         } else {
             $months = max(1, min(12, (int) $request->query->get('months', 1)));
             $from = $now->modify("first day of -" . ($months - 1) . " months midnight");
@@ -76,6 +90,23 @@ class DashboardController extends AbstractController
             'category' => $row['category'],
             'total' => (float) $row['total'],
         ], $data));
+    }
+
+    /**
+     * Safely parse a date query parameter, returning null for empty or
+     * malformed input instead of throwing a 500.
+     */
+    private function parseDateParam(?string $value): ?\DateTimeImmutable
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($value);
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     #[Route('/api/dashboard/monthly-breakdown', name: 'api_dashboard_monthly_breakdown', methods: ['GET'])]
