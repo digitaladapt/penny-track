@@ -326,10 +326,10 @@ class DashboardControllerTest_v1_2 extends WebTestCase
         }
     }
 
-    public function testInsightsMonthOverMonthCorrectlyDetected(): void
+    public function testInsightsNoSpentLessInsightAfterRemoval(): void
     {
         // Last month: very high spending ($1000)
-        // This month: much lower ($200) — should trigger "you spent X% less" insight
+        // This month: much lower ($200) — the "spent X% less" insight was intentionally removed
         $now = new \DateTimeImmutable();
         $startOfLastMonth = (clone $now)->modify('first day of last month midnight');
         $endOfLastMonth = (clone $now)->modify('first day of this month midnight')->modify('-1 second');
@@ -363,7 +363,9 @@ class DashboardControllerTest_v1_2 extends WebTestCase
         $this->assertResponseIsSuccessful();
         $data = json_decode($this->client->getResponse()->getContent(), true);
 
-        // Last month: 5 * 200 = 1000, This month: 2 * 100 = 200 → -80% change => "spent X% less"
+        // Last month: 5 * 200 = 1000, This month: 2 * 100 = 200 → -80% change
+        // The "spent X% less" insight was removed since it duplicates the "This Month" box.
+        // Verify no "less than last month" insight is present.
         $foundLessInsight = false;
         foreach ($data as $insight) {
             if (str_contains(strtolower($insight['message'] ?? ''), 'less than last month')) {
@@ -372,7 +374,7 @@ class DashboardControllerTest_v1_2 extends WebTestCase
             }
         }
 
-        $this->assertTrue($foundLessInsight, 'Expected "spent less than last month" insight when change is -80%');
+        $this->assertFalse($foundLessInsight, 'The "spent less than last month" insight should no longer be emitted');
     }
 
     public function testInsightsReturnsArray(): void

@@ -238,11 +238,6 @@ class DashboardController extends AbstractController
                     'type' => 'warning',
                     'message' => sprintf('You spent %.0f%% more than last month', $change),
                 ];
-            } elseif ($change < -20) {
-                $insights[] = [
-                    'type' => 'success',
-                    'message' => sprintf('You spent %.0f%% less than last month', abs($change)),
-                ];
             }
         }
 
@@ -318,18 +313,22 @@ class DashboardController extends AbstractController
             'message' => sprintf('On track to spend between $%.2f ~ $%.2f this month', $projectedMin, $projectedMax),
         ];
 
+        $highSpending = [];
         foreach ($thisMonthByCategory as $row) {
             $cat = $row['category'];
             $total = (float) $row['total'];
             if (isset($avgLookup[$cat]['average']) && $avgLookup[$cat]['average'] > 0) {
                 $ratio = $total / ($avgLookup[$cat]['average'] * $avgLookup[$cat]['average_count'] * $avgLookup[$cat]['months'] / $maxMonths);
                 if ($ratio > 1.25) {
-                    $insights[] = [
-                        'type' => 'warning',
-                        'message' => sprintf('Unusually high spending in %s (%.0fx average)', $cat, $ratio),
-                    ];
+                    $highSpending[] = sprintf('%s (%.0fx average)', $cat, $ratio);
                 }
             }
+        }
+        if (!empty($highSpending)) {
+            $insights[] = [
+                'type' => 'warning',
+                'message' => 'Unusually high spending in ' . implode(' ● ', $highSpending),
+            ];
         }
 
         // New category detected — compare this month's categories against last 3 months
@@ -341,12 +340,10 @@ class DashboardController extends AbstractController
 
         $newCategories = array_diff($thisMonthCats, $pastCats);
         if (!empty($newCategories)) {
-            foreach ($newCategories as $cat) {
-                $insights[] = [
-                    'type' => 'info',
-                    'message' => sprintf('New category this month: %s', $cat),
-                ];
-            }
+            $insights[] = [
+                'type' => 'info',
+                'message' => 'New category this month: ' . implode(' ● ', $newCategories),
+            ];
         }
 
         return new JsonResponse($insights);
