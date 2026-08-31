@@ -10,14 +10,14 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
-# Build arg for application version (pass with --build-arg APP_VERSION=v2.0.0 in CI)
-ARG APP_VERSION=dev
-
 # Copy only manifests first for better layer caching
 COPY composer.json composer.lock symfony.lock ./
 
 RUN composer install --no-dev --no-interaction --no-scripts
 RUN composer dump-env prod --empty
+
+# Build arg for application version (pass with --build-arg APP_VERSION=v2.0.0 in CI)
+ARG APP_VERSION=dev
 
 # Copy the rest of the application
 COPY . .
@@ -51,7 +51,7 @@ COPY docker/entrypoint.sh /app/docker/entrypoint.sh
 RUN chmod +x /app/docker/entrypoint.sh
 
 # Create var directory for SQLite DB, logs, cache
-RUN mkdir -p /app/var/data
+RUN mkdir -p /app/var/data && chown -R nobody:nogroup /app/var
 
 # Environment defaults
 ENV APP_ENV=prod \
@@ -59,8 +59,11 @@ ENV APP_ENV=prod \
     FRANKENPHP_RESET_KERNEL=1 \
     DATABASE_URL="sqlite:///%kernel.project_dir%/var/data/penny_track.db"
 
-# Volume for SQLite database only (logs/cache stay in-container)
-VOLUME /app/var/data
+# Volume for SQLite database, logs, and cache
+VOLUME /app/var
+
+# Run as non-root user for security
+USER nobody:nogroup
 
 EXPOSE 80
 

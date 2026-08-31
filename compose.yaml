@@ -1,7 +1,3 @@
-networks:
-  public:
-    external: true
-
 services:
   penny-track:
     build:
@@ -25,8 +21,6 @@ services:
       MAILER_DSN: ${MAILER_DSN:-null://null}
       BUDGET_GOAL: ${BUDGET_GOAL:-0}
     restart: unless-stopped
-    networks:
-      - public
     volumes:
-      - ./var/data:/app/var/data
+      - ./var:/app/var
 
