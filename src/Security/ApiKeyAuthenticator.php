@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Security;
 
+use App\Entity\ApiKey;
 use App\Repository\ApiKeyRepository;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -35,18 +36,17 @@ class ApiKeyAuthenticator extends AbstractAuthenticator
             throw new CustomUserMessageAuthenticationException('No API key provided');
         }
 
-        $apiKeyEntity = $this->apiKeyRepository->findFirst();
-        $valid = false;
+        $apiKeyEntity = $this->apiKeyRepository->findByKey($apiKey);
 
-        if ($apiKeyEntity !== null) {
-            $valid = password_verify($apiKey, $apiKeyEntity->getKeyHash());
-        }
-
-        if (!$valid) {
+        if ($apiKeyEntity === null) {
             throw new CustomUserMessageAuthenticationException('Invalid API key');
         }
 
-        return new SelfValidatingPassport(new UserBadge('user', fn () => new ApiKeyUser()));
+        $role = $apiKeyEntity->isReadOnly()
+            ? [ApiKey::ROLE_READ_ONLY]
+            : [ApiKey::ROLE_ADMIN];
+
+        return new SelfValidatingPassport(new UserBadge('user', fn () => new ApiKeyUser($role)));
     }
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response

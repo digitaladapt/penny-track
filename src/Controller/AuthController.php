@@ -24,7 +24,7 @@ class AuthController extends AbstractController
     #[Route('/setup', name: 'app_setup', methods: ['GET'])]
     public function setup(): Response
     {
-        if ($this->apiKeyRepository->hasAny()) {
+        if ($this->apiKeyRepository->hasAdminKey()) {
             return $this->redirectToRoute('app_login');
         }
 
@@ -34,7 +34,7 @@ class AuthController extends AbstractController
     #[Route('/api/auth/setup', name: 'api_auth_setup', methods: ['POST'])]
     public function apiSetup(): JsonResponse
     {
-        if ($this->apiKeyRepository->hasAny()) {
+        if ($this->apiKeyRepository->hasAdminKey()) {
             return new JsonResponse(['error' => 'Already configured'], Response::HTTP_CONFLICT);
         }
 
@@ -52,7 +52,7 @@ class AuthController extends AbstractController
     #[Route('/login', name: 'app_login', methods: ['GET'])]
     public function login(): Response
     {
-        if (!$this->apiKeyRepository->hasAny()) {
+        if (!$this->apiKeyRepository->hasAdminKey()) {
             return $this->redirectToRoute('app_setup');
         }
 
@@ -68,9 +68,12 @@ class AuthController extends AbstractController
         }
         $providedKey = $data['api_key'] ?? '';
 
-        $apiKeyEntity = $this->apiKeyRepository->findFirst();
-        if ($apiKeyEntity !== null && password_verify($providedKey, $apiKeyEntity->getKeyHash())) {
-            return new JsonResponse(['valid' => true]);
+        $apiKeyEntity = $this->apiKeyRepository->findByKey((string) $providedKey);
+        if ($apiKeyEntity !== null) {
+            return new JsonResponse([
+                'valid' => true,
+                'read_only' => $apiKeyEntity->isReadOnly(),
+            ]);
         }
 
         return new JsonResponse(['valid' => false], Response::HTTP_UNAUTHORIZED);

@@ -18,10 +18,19 @@ class ApiKeyRepository extends ServiceEntityRepository
         parent::__construct($registry, ApiKey::class);
     }
 
-    public function hasAny(): bool
+    /**
+     * True when at least one full-access (admin) key exists.
+     *
+     * Read-only keys don't count: a user who only created a read-only key
+     * (e.g. via the CLI) must still be able to bootstrap an admin key via
+     * the web setup flow.
+     */
+    public function hasAdminKey(): bool
     {
         $count = $this->createQueryBuilder('a')
             ->select('COUNT(a.id)')
+            ->where('a.readOnly = :readOnly')
+            ->setParameter('readOnly', false)
             ->getQuery()
             ->getSingleScalarResult();
 
@@ -29,17 +38,19 @@ class ApiKeyRepository extends ServiceEntityRepository
     }
 
     /**
-     * Fetch the first stored API key.
+     * Find the stored API key whose bcrypt hash matches the provided key.
      *
-     * This is a single-user app, so there is only ever one key.
-     * Using this instead of findAll() avoids loading all rows into memory
-     * and signals the single-key assumption to future maintainers.
+     * There may be several keys (admin + read-only), so iterate over all of
+     * them. password_verify is constant-time for the given input.
      */
-    public function findFirst(): ?ApiKey
+    public function findByKey(string $apiKey): ?ApiKey
     {
-        return $this->createQueryBuilder('a')
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
+        foreach ($this->findAll() as $candidate) {
+            if ($candidate->getKeyHash() !== null && password_verify($apiKey, $candidate->getKeyHash())) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 }

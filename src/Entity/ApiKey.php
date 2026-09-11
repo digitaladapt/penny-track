@@ -12,6 +12,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class ApiKey
 {
+    public const ROLE_ADMIN = 'ROLE_USER';
+    public const ROLE_READ_ONLY = 'ROLE_READ_ONLY';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -19,6 +22,9 @@ class ApiKey
 
     #[ORM\Column(length: 255)]
     private ?string $keyHash = null;
+
+    #[ORM\Column(type: Types::BOOLEAN)]
+    private bool $readOnly = false;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeInterface $createdAt = null;
@@ -42,6 +48,17 @@ class ApiKey
     public function setKeyHash(?string $keyHash): static
     {
         $this->keyHash = $keyHash;
+        return $this;
+    }
+
+    public function isReadOnly(): bool
+    {
+        return $this->readOnly;
+    }
+
+    public function setReadOnly(bool $readOnly): static
+    {
+        $this->readOnly = $readOnly;
         return $this;
     }
 

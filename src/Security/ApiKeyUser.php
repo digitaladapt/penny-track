@@ -8,9 +8,17 @@ use Symfony\Component\Security\Core\User\UserInterface;
 
 class ApiKeyUser implements UserInterface
 {
+    /**
+     * @param list<string> $roles
+     */
+    public function __construct(
+        private readonly array $roles = ['ROLE_USER'],
+    ) {
+    }
+
     public function getRoles(): array
     {
-        return ['ROLE_USER'];
+        return $this->roles;
     }
 
     public function eraseCredentials(): void
