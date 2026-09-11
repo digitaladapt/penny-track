@@ -8,7 +8,7 @@ A fast, mobile-responsive web application for tracking personal expenses and rec
 - **Manual Entry**: Full form with autocomplete from history
 - **Dashboard**: Summary cards, spending breakdowns, trends, and insights
 - **Mobile-First**: Responsive design optimized for phones
-- **Secure**: Simple API-key authentication (single-user MVP)
+- **Secure**: API-key authentication with full-access and read-only keys
 - **Docker**: Production-ready container with FrankenPHP worker mode
 
 ## Tech Stack
@@ -115,8 +115,20 @@ Supports any OpenAI-compatible API (Ollama, LM Studio, etc.).
 
 | Method | Path               | Auth | Description                               |
 |--------|--------------------|------|-------------------------------------------|
-| POST   | `/api/auth/setup`  | No   | Generate initial API key (only works once) |
-| POST   | `/api/auth/verify` | No   | Verify an API key                         |
+| POST   | `/api/auth/setup`  | No   | Generate initial admin API key (only works once, and only while no admin key exists) |
+| POST   | `/api/auth/verify` | No   | Verify an API key (returns `read_only` flag) |
+
+**Key types:**
+
+| Key | Permissions | How to create |
+|-----|-------------|----------------|
+| Admin | All endpoints (read + write) | Web setup (`/setup`) or `php bin/console app:api-key:create` |
+| Read-only | `GET`/`HEAD` endpoints only (reads) | `php bin/console app:api-key:create --read-only` |
+
+Read-only keys are intended for integrations (e.g. an MCP server tool)
+that should never mutate your data. Both key types authenticate via the
+`X-API-Key` header. The verify endpoint now also returns a `read_only`
+boolean so clients can tell which type they hold.
 
 ### Receipts
 
@@ -124,10 +136,10 @@ Supports any OpenAI-compatible API (Ollama, LM Studio, etc.).
 |--------|-------------------------|------|----------------------------------|
 | GET    | `/api/receipts`         | Yes  | List receipts (paginated)        |
 | GET    | `/api/receipts/{id}`    | Yes  | Get single receipt               |
-| POST   | `/api/receipts`         | Yes  | Create receipt                   |
-| PUT    | `/api/receipts/{id}`    | Yes  | Update receipt (partial)         |
-| DELETE | `/api/receipts/{id}`    | Yes  | Delete receipt                   |
-| POST   | `/api/receipts/parse`   | Yes  | Parse natural language → receipt |
+| POST   | `/api/receipts`         | Admin only | Create receipt             |
+| PUT    | `/api/receipts/{id}`    | Admin only | Update receipt (partial)     |
+| DELETE | `/api/receipts/{id}`    | Admin only | Delete receipt               |
+| POST   | `/api/receipts/parse`   | Admin only | Parse natural language → receipt |
 
 ### Dashboard
 

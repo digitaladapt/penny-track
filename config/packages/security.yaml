@@ -27,6 +27,9 @@ security:
         - { path: ^/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/about, roles: PUBLIC_ACCESS }
         - { path: ^/api/health, roles: PUBLIC_ACCESS }
+        # Safe (read) API routes: any authenticated key works, including read-only.
+        - { path: ^/api, methods: [GET, HEAD], roles: [ROLE_USER, ROLE_READ_ONLY] }
+        # Everything else under /api (POST/PUT/DELETE/PATCH) requires full access.
         - { path: ^/api, roles: ROLE_USER }
 
 when@test:
