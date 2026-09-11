@@ -37,8 +37,31 @@ class ReceiptController extends AbstractController
         $page = max(1, (int) $request->query->get('page', 1));
         $limit = min(100, max(1, (int) $request->query->get('limit', 10)));
 
-        $receipts = $this->receiptRepository->findBy([], ['createdAt' => 'DESC'], $limit, ($page - 1) * $limit);
-        $total = $this->receiptRepository->count([]);
+        // Optional from/to date-range filter (inclusive). When present, both
+        // must be valid dates and 'to' must not precede 'from'.
+        $from = null;
+        $to = null;
+        if ($request->query->has('from') || $request->query->has('to')) {
+            $from = $this->parseDateParam($request->query->get('from'));
+            $to   = $this->parseDateParam($request->query->get('to'));
+
+            if ($from === null || $to === null) {
+                return new JsonResponse(
+                    ['error' => "Invalid date range. 'from' and 'to' must be valid dates (e.g. 2025-01-01)."],
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
+
+            if ($to < $from) {
+                return new JsonResponse(
+                    ['error' => "Invalid date range. 'to' must not be before 'from'."],
+                    Response::HTTP_BAD_REQUEST
+                );
+            }
+        }
+
+        $receipts = $this->receiptRepository->findFiltered($from, $to, $limit, ($page - 1) * $limit);
+        $total = $this->receiptRepository->countFiltered($from, $to);
 
         return new JsonResponse([
             'data' => array_map(fn (Receipt $r) => $this->serializeReceipt($r), $receipts),
@@ -190,6 +213,23 @@ class ReceiptController extends AbstractController
     public function autocompleteLocations(): JsonResponse
     {
         return new JsonResponse($this->receiptRepository->findUniqueLocations());
+    }
+
+    /**
+     * Safely parse a date query parameter, returning null for empty or
+     * malformed input instead of throwing a 500.
+     */
+    private function parseDateParam(?string $value): ?\DateTimeImmutable
+    {
+        if ($value === null || trim($value) === '') {
+            return null;
+        }
+
+        try {
+            return new \DateTimeImmutable($value);
+        } catch (\Exception) {
+            return null;
+        }
     }
 
     /**

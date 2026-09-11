@@ -134,7 +134,7 @@ boolean so clients can tell which type they hold.
 
 | Method | Path                    | Auth | Description                      |
 |--------|-------------------------|------|----------------------------------|
-| GET    | `/api/receipts`         | Yes  | List receipts (paginated)        |
+| GET    | `/api/receipts`         | Yes  | List receipts (paginated, optional `from`/`to` date filter) |
 | GET    | `/api/receipts/{id}`    | Yes  | Get single receipt               |
 | POST   | `/api/receipts`         | Admin only | Create receipt             |
 | PUT    | `/api/receipts/{id}`    | Admin only | Update receipt (partial)     |
