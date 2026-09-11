@@ -148,6 +148,78 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertSame('Starbucks', $data['data'][0]['business']);
     }
 
+    public function testListReceiptsFiltersByDateRange(): void
+    {
+        $old = new Receipt();
+        $old->setAmount('10.00');
+        $old->setBusiness('Old');
+        $old->setCategory('Other');
+        $old->setCreatedAt(new \DateTimeImmutable('2024-01-01'));
+        $this->em->persist($old);
+
+        $new = new Receipt();
+        $new->setAmount('20.00');
+        $new->setBusiness('New');
+        $new->setCategory('Other');
+        $new->setCreatedAt(new \DateTimeImmutable('2025-06-15'));
+        $this->em->persist($new);
+        $this->em->flush();
+
+        $this->client->request('GET', '/api/receipts?from=2025-01-01&to=2025-12-31', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
+
+        $this->assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertCount(1, $data['data']);
+        $this->assertSame('New', $data['data'][0]['business']);
+        $this->assertSame(1, $data['meta']['total']);
+    }
+
+    public function testListReceiptsDateRangeExcludesEarlierAndLater(): void
+    {
+        $before = new Receipt();
+        $before->setAmount('5.00');
+        $before->setBusiness('Before');
+        $before->setCategory('Other');
+        $before->setCreatedAt(new \DateTimeImmutable('2025-01-01'));
+        $this->em->persist($before);
+
+        $inside = new Receipt();
+        $inside->setAmount('15.00');
+        $inside->setBusiness('Inside');
+        $inside->setCategory('Other');
+        $inside->setCreatedAt(new \DateTimeImmutable('2025-06-01'));
+        $this->em->persist($inside);
+
+        $after = new Receipt();
+        $after->setAmount('25.00');
+        $after->setBusiness('After');
+        $after->setCategory('Other');
+        $after->setCreatedAt(new \DateTimeImmutable('2026-01-01'));
+        $this->em->persist($after);
+        $this->em->flush();
+
+        $this->client->request('GET', '/api/receipts?from=2025-03-01&to=2025-09-30', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
+
+        $this->assertResponseIsSuccessful();
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertCount(1, $data['data']);
+        $this->assertSame('Inside', $data['data'][0]['business']);
+    }
+
+    public function testListReceiptsInvalidDateRangeReturns400(): void
+    {
+        $this->client->request('GET', '/api/receipts?from=not-a-date&to=2025-12-31', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
+
+        $this->assertResponseStatusCodeSame(400);
+    }
+
+    public function testListReceiptsReversedDateRangeReturns400(): void
+    {
+        $this->client->request('GET', '/api/receipts?from=2025-12-31&to=2025-01-01', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
+
+        $this->assertResponseStatusCodeSame(400);
+    }
+
     public function testDeleteReceipt(): void
     {
         $receipt = new Receipt();

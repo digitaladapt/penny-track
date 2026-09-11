@@ -31,6 +31,56 @@ class ReceiptRepository extends ServiceEntityRepository
     }
 
     /**
+     * Find receipts with optional inclusive date-range filtering.
+     *
+     * @return Receipt[]
+     */
+    public function findFiltered(
+        ?\DateTimeInterface $from = null,
+        ?\DateTimeInterface $to = null,
+        int $limit = 10,
+        int $offset = 0,
+    ): array {
+        $qb = $this->createQueryBuilder('r')
+            ->orderBy('r.createdAt', 'DESC')
+            ->setMaxResults($limit)
+            ->setFirstResult($offset);
+
+        if ($from !== null) {
+            $qb->andWhere('r.createdAt >= :from')
+                ->setParameter('from', $from);
+        }
+        if ($to !== null) {
+            $qb->andWhere('r.createdAt <= :to')
+                ->setParameter('to', $to);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
+
+    /**
+     * Count receipts with optional inclusive date-range filtering.
+     */
+    public function countFiltered(
+        ?\DateTimeInterface $from = null,
+        ?\DateTimeInterface $to = null,
+    ): int {
+        $qb = $this->createQueryBuilder('r')
+            ->select('COUNT(r.id)');
+
+        if ($from !== null) {
+            $qb->andWhere('r.createdAt >= :from')
+                ->setParameter('from', $from);
+        }
+        if ($to !== null) {
+            $qb->andWhere('r.createdAt <= :to')
+                ->setParameter('to', $to);
+        }
+
+        return (int) $qb->getQuery()->getSingleScalarResult();
+    }
+
+    /**
      * @return array<string, string>
      */
     public function findUniqueBusinesses(): array
