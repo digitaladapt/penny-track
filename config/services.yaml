@@ -10,6 +10,9 @@ parameters:
     env(BUDGET_GOAL): '0'
     env(DATABASE_URL): 'sqlite:///%kernel.project_dir%/var/data/penny_track.db'
     env(DEFAULT_URI): 'http://localhost'
+    # Fallback used when TRUSTED_PROXIES is not set in the environment.
+    # 'PRIVATE_SUBNETS' expands to loopback + all RFC1918/link-local ranges.
+    env(TRUSTED_PROXIES): '127.0.0.1,PRIVATE_SUBNETS'
     app.budget_goal: '%env(float:BUDGET_GOAL)%'
 
 services:

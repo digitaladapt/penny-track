@@ -5,6 +5,13 @@ framework:
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 
+    # Trust X-Forwarded-* headers from reverse proxies. Without this, the app
+    # cannot tell it is served over HTTPS behind the external proxy, so HSTS
+    # is never emitted. Defaults to loopback + private subnets; override with
+    # the TRUSTED_PROXIES env var (empty string disables trusting any proxy).
+    trusted_proxies: '%env(TRUSTED_PROXIES)%'
+    trusted_headers: ['x-forwarded-for', 'x-forwarded-proto', 'x-forwarded-host', 'x-forwarded-port']
+
     #esi: true
     #fragments: true
 

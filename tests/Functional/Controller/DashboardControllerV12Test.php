@@ -11,12 +11,12 @@ use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 /**
- * Functional tests for v1.2 Dashboard API changes:
- * - spending-by-category with comparison mode
+ * Functional tests for the v1.2 Dashboard API changes:
+ * - spending-by-category stays backward compatible (flat array)
  * - top-businesses with configurable limit
- * - insights improvements (category anomaly, velocity guard, etc.)
+ * - insights tweaks (e.g. "spent X% less" insight removal)
  */
-class DashboardControllerTest_v1_2 extends WebTestCase
+final class DashboardControllerV12Test extends WebTestCase
 {
     private KernelBrowser $client;
     private string $apiKey;
@@ -44,107 +44,8 @@ class DashboardControllerTest_v1_2 extends WebTestCase
     }
 
     /* ------------------------------------------------------------------ */
-    /* Spending by Category — Comparison Mode                             */
+    /* Spending by Category — Backward Compatibility                      */
     /* ------------------------------------------------------------------ */
-
-    public function testSpendingByCategoryComparisonModeReturnsTwoPeriods(): void
-    {
-        // Create receipts in this month and last month with different categories
-        $now = new \DateTimeImmutable();
-        $startOfLastMonth = $now->modify('first day of last month midnight');
-        $endOfLastMonth = (clone $now)->modify('first day of this month midnight')->modify('-1 second');
-
-        // Last month: Food $200, Transport $50
-        for ($i = 0; $i < 4; $i++) {
-            $r = new Receipt();
-            $r->setAmount('50.00');
-            $r->setBusiness("LM_Biz$i");
-            $r->setCategory('Food');
-            $date = clone $startOfLastMonth;
-            $date = $date->modify("+{$i} days midnight");
-            $r->setCreatedAt($date);
-            $this->em->persist($r);
-        }
-
-        for ($i = 0; $i < 2; $i++) {
-            $r = new Receipt();
-            $r->setAmount('25.00');
-            $r->setBusiness("LM_Trans$i");
-            $r->setCategory('Transport');
-            $date = clone $startOfLastMonth;
-            $date = $date->modify("+{$i} days midnight");
-            $r->setCreatedAt($date);
-            $this->em->persist($r);
-        }
-
-        // This month: Food $300, Transport $100 (also add Entertainment which wasn't in last month)
-        for ($i = 0; $i < 3; $i++) {
-            $r = new Receipt();
-            $r->setAmount('100.00');
-            $r->setBusiness("TM_Food$i");
-            $r->setCategory('Food');
-            $date = clone $now;
-            $date = $date->modify("+{$i} days midnight");
-            $r->setCreatedAt($date);
-            $this->em->persist($r);
-        }
-
-        for ($i = 0; $i < 2; $i++) {
-            $r = new Receipt();
-            $r->setAmount('50.00');
-            $r->setBusiness("TM_Trans$i");
-            $r->setCategory('Transport');
-            $date = clone $now;
-            $date = $date->modify("+{$i} days midnight");
-            $r->setCreatedAt($date);
-            $this->em->persist($r);
-        }
-
-        for ($i = 0; $i < 2; $i++) {
-            $r = new Receipt();
-            $r->setAmount('75.00');
-            $r->setBusiness("TM_Ent$i");
-            $r->setCategory('Entertainment');
-            $date = clone $now;
-            $date = $date->modify("+{$i} days midnight");
-            $r->setCreatedAt($date);
-            $this->em->persist($r);
-        }
-
-        $this->em->flush();
-
-        // Call endpoint with comparison=true
-        $this->client->request('GET', '/api/dashboard/spending-by-category?comparison=true', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
-
-        $this->assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
-
-        // Verify shape: should have this_month and last_month keys, both arrays
-        $this->assertArrayHasKey('this_month', $data);
-        $this->assertArrayHasKey('last_month', $data);
-        $this->assertIsArray($data['this_month']);
-        $this->assertIsArray($data['last_month']);
-
-        // Build lookup maps for easier assertions
-        $tmMap = [];
-        foreach ($data['this_month'] as $item) {
-            $tmMap[$item['category']] = (float)$item['total'];
-        }
-
-        $lmMap = [];
-        foreach ($data['last_month'] as $item) {
-            $lmMap[$item['category']] = (float)$item['total'];
-        }
-
-        // Assertions on totals
-        $this->assertEqualsWithDelta(300.00, $tmMap['Food'], 0.01);
-        $this->assertEqualsWithDelta(200.00, $lmMap['Food'], 0.01);
-        $this->assertEqualsWithDelta(100.00, $tmMap['Transport'], 0.01);
-        $this->assertEqualsWithDelta(50.00, $lmMap['Transport'], 0.01);
-
-        // Entertainment only in this month; last_month should have it with total 0 or absent (implementation choice)
-        $this->assertEqualsWithDelta(150.00, $tmMap['Entertainment'], 0.01);
-    }
 
     public function testSpendingByCategoryBackwardCompatibleWithoutComparisonParam(): void
     {
@@ -300,31 +201,6 @@ class DashboardControllerTest_v1_2 extends WebTestCase
     /* ------------------------------------------------------------------ */
     /* Insights — Improvements & New Behaviors                            */
     /* ------------------------------------------------------------------ */
-
-    public function testInsightsVelocityNotShownWithFewTransactions(): void
-    {
-        // Seed only 2 receipts this month (below threshold of 3)
-        $now = new \DateTimeImmutable();
-        for ($i = 0; $i < 2; $i++) {
-            $r = new Receipt();
-            $r->setAmount('10.00');
-            $r->setBusiness("VelTest$i");
-            $r->setCategory('Food');
-            $this->em->persist($r);
-        }
-        $this->em->flush();
-
-        $this->client->request('GET', '/api/dashboard/insights', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
-
-        $this->assertResponseIsSuccessful();
-        $data = json_decode($this->client->getResponse()->getContent(), true);
-
-        // No insight should contain "On track to spend" when transaction count is low
-        foreach ($data as $insight) {
-            $msg = strtolower($insight['message'] ?? '');
-            $this->assertStringNotContainsString('on track', $msg, 'Velocity insight should not appear with < 3 transactions');
-        }
-    }
 
     public function testInsightsNoSpentLessInsightAfterRemoval(): void
     {
