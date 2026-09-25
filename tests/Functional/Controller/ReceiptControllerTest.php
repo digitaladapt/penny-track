@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Controller;
 
 use App\Entity\ApiKey;
 use App\Entity\Receipt;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -30,12 +31,12 @@ class ReceiptControllerTest extends WebTestCase
         // Create API key
         $this->apiKey = bin2hex(random_bytes(32));
         $apiKeyEntity = new ApiKey();
-        $apiKeyEntity->setKeyHash(password_hash($this->apiKey, PASSWORD_BCRYPT));
+        $apiKeyEntity->setKeyHash(password_hash($this->apiKey, \PASSWORD_BCRYPT));
         $this->em->persist($apiKeyEntity);
         $this->em->flush();
     }
 
-    public function testCreateReceipt(): void
+    public function test_create_receipt(): void
     {
         $this->client->request('POST', '/api/receipts', [], [], [
             'HTTP_X_API_KEY' => $this->apiKey,
@@ -56,7 +57,7 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertSame('Food', $data['category']);
     }
 
-    public function testCreateReceiptWithCustomCreatedAt(): void
+    public function test_create_receipt_with_custom_created_at(): void
     {
         $this->client->request('POST', '/api/receipts', [], [], [
             'HTTP_X_API_KEY' => $this->apiKey,
@@ -74,9 +75,9 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertStringStartsWith('2023-06-10', $data['created_at']);
     }
 
-    public function testCreateReceiptWithoutCreatedAtDefaultsToNow(): void
+    public function test_create_receipt_without_created_at_defaults_to_now(): void
     {
-        $before = new \DateTimeImmutable('-5 seconds');
+        $before = new DateTimeImmutable('-5 seconds');
 
         $this->client->request('POST', '/api/receipts', [], [], [
             'HTTP_X_API_KEY' => $this->apiKey,
@@ -89,21 +90,21 @@ class ReceiptControllerTest extends WebTestCase
 
         $this->assertResponseStatusCodeSame(201);
         $data = json_decode($this->client->getResponse()->getContent(), true);
-        $createdAt = new \DateTimeImmutable($data['created_at']);
+        $createdAt = new DateTimeImmutable($data['created_at']);
         $this->assertGreaterThanOrEqual($before, $createdAt);
     }
 
-    public function testUpdateReceiptWithCustomCreatedAt(): void
+    public function test_update_receipt_with_custom_created_at(): void
     {
         $receipt = new Receipt();
         $receipt->setAmount('10.00');
         $receipt->setBusiness('Original');
         $receipt->setCategory('Other');
-        $receipt->setCreatedAt(new \DateTimeImmutable('2022-01-01'));
+        $receipt->setCreatedAt(new DateTimeImmutable('2022-01-01'));
         $this->em->persist($receipt);
         $this->em->flush();
 
-        $this->client->request('PUT', '/api/receipts/' . $receipt->getId(), [], [], [
+        $this->client->request('PUT', '/api/receipts/'.$receipt->getId(), [], [], [
             'HTTP_X_API_KEY' => $this->apiKey,
             'CONTENT_TYPE' => 'application/json',
         ], json_encode([
@@ -115,7 +116,7 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertStringStartsWith('2023-07-20', $data['created_at']);
     }
 
-    public function testCreateReceiptValidationFails(): void
+    public function test_create_receipt_validation_fails(): void
     {
         $this->client->request('POST', '/api/receipts', [], [], [
             'HTTP_X_API_KEY' => $this->apiKey,
@@ -131,7 +132,7 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertArrayHasKey('errors', $data);
     }
 
-    public function testListReceipts(): void
+    public function test_list_receipts(): void
     {
         $receipt = new Receipt();
         $receipt->setAmount('25.00');
@@ -148,20 +149,20 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertSame('Starbucks', $data['data'][0]['business']);
     }
 
-    public function testListReceiptsFiltersByDateRange(): void
+    public function test_list_receipts_filters_by_date_range(): void
     {
         $old = new Receipt();
         $old->setAmount('10.00');
         $old->setBusiness('Old');
         $old->setCategory('Other');
-        $old->setCreatedAt(new \DateTimeImmutable('2024-01-01'));
+        $old->setCreatedAt(new DateTimeImmutable('2024-01-01'));
         $this->em->persist($old);
 
         $new = new Receipt();
         $new->setAmount('20.00');
         $new->setBusiness('New');
         $new->setCategory('Other');
-        $new->setCreatedAt(new \DateTimeImmutable('2025-06-15'));
+        $new->setCreatedAt(new DateTimeImmutable('2025-06-15'));
         $this->em->persist($new);
         $this->em->flush();
 
@@ -174,27 +175,27 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertSame(1, $data['meta']['total']);
     }
 
-    public function testListReceiptsDateRangeExcludesEarlierAndLater(): void
+    public function test_list_receipts_date_range_excludes_earlier_and_later(): void
     {
         $before = new Receipt();
         $before->setAmount('5.00');
         $before->setBusiness('Before');
         $before->setCategory('Other');
-        $before->setCreatedAt(new \DateTimeImmutable('2025-01-01'));
+        $before->setCreatedAt(new DateTimeImmutable('2025-01-01'));
         $this->em->persist($before);
 
         $inside = new Receipt();
         $inside->setAmount('15.00');
         $inside->setBusiness('Inside');
         $inside->setCategory('Other');
-        $inside->setCreatedAt(new \DateTimeImmutable('2025-06-01'));
+        $inside->setCreatedAt(new DateTimeImmutable('2025-06-01'));
         $this->em->persist($inside);
 
         $after = new Receipt();
         $after->setAmount('25.00');
         $after->setBusiness('After');
         $after->setCategory('Other');
-        $after->setCreatedAt(new \DateTimeImmutable('2026-01-01'));
+        $after->setCreatedAt(new DateTimeImmutable('2026-01-01'));
         $this->em->persist($after);
         $this->em->flush();
 
@@ -206,21 +207,21 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertSame('Inside', $data['data'][0]['business']);
     }
 
-    public function testListReceiptsInvalidDateRangeReturns400(): void
+    public function test_list_receipts_invalid_date_range_returns400(): void
     {
         $this->client->request('GET', '/api/receipts?from=not-a-date&to=2025-12-31', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
 
         $this->assertResponseStatusCodeSame(400);
     }
 
-    public function testListReceiptsReversedDateRangeReturns400(): void
+    public function test_list_receipts_reversed_date_range_returns400(): void
     {
         $this->client->request('GET', '/api/receipts?from=2025-12-31&to=2025-01-01', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
 
         $this->assertResponseStatusCodeSame(400);
     }
 
-    public function testDeleteReceipt(): void
+    public function test_delete_receipt(): void
     {
         $receipt = new Receipt();
         $receipt->setAmount('10.00');
@@ -229,26 +230,26 @@ class ReceiptControllerTest extends WebTestCase
         $this->em->persist($receipt);
         $this->em->flush();
 
-        $this->client->request('DELETE', '/api/receipts/' . $receipt->getId(), [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
+        $this->client->request('DELETE', '/api/receipts/'.$receipt->getId(), [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
 
         $this->assertResponseStatusCodeSame(204);
     }
 
-    public function testUnauthorizedWithoutApiKey(): void
+    public function test_unauthorized_without_api_key(): void
     {
         $this->client->request('GET', '/api/receipts');
 
         $this->assertResponseStatusCodeSame(401);
     }
 
-    public function testUnauthorizedWithInvalidApiKey(): void
+    public function test_unauthorized_with_invalid_api_key(): void
     {
         $this->client->request('GET', '/api/receipts', [], [], ['HTTP_X_API_KEY' => 'invalid-key']);
 
         $this->assertResponseStatusCodeSame(401);
     }
 
-    public function testCreateDuplicateReceiptWithin5MinutesIsRejected(): void
+    public function test_create_duplicate_receipt_within5_minutes_is_rejected(): void
     {
         // First receipt – should succeed
         $this->client->request('POST', '/api/receipts', [], [], [
@@ -276,14 +277,14 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertStringContainsString('duplicate', $data['error']);
     }
 
-    public function testCreateReceiptAfter5MinutesIsAllowed(): void
+    public function test_create_receipt_after5_minutes_is_allowed(): void
     {
         // Seed a receipt 6 minutes ago
         $receipt = new Receipt();
         $receipt->setAmount('55.00');
         $receipt->setBusiness('OldCafe');
         $receipt->setCategory('Food');
-        $receipt->setCreatedAt(new \DateTimeImmutable('-6 minutes'));
+        $receipt->setCreatedAt(new DateTimeImmutable('-6 minutes'));
         $this->em->persist($receipt);
         $this->em->flush();
 
@@ -299,7 +300,7 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(201);
     }
 
-    public function testCreateReceiptWithDifferentBusinessIsAllowed(): void
+    public function test_create_receipt_with_different_business_is_allowed(): void
     {
         // First receipt
         $this->client->request('POST', '/api/receipts', [], [], [
@@ -324,7 +325,7 @@ class ReceiptControllerTest extends WebTestCase
         $this->assertResponseStatusCodeSame(201);
     }
 
-    public function testAutocomplete(): void
+    public function test_autocomplete(): void
     {
         $receipt = new Receipt();
         $receipt->setAmount('10.00');

@@ -1,0 +1,343 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Method App\\Command\\CreateApiKeyCommand\:\:configure\(\) overrides method Symfony\\Component\\Console\\Command\\Command\:\:configure\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Command/CreateApiKeyCommand.php
+
+		-
+			message: '#^Method App\\Command\\CreateApiKeyCommand\:\:execute\(\) overrides method Symfony\\Component\\Console\\Command\\Command\:\:execute\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Command/CreateApiKeyCommand.php
+
+		-
+			message: '#^Method App\\Command\\ParseJobProcessCommand\:\:configure\(\) overrides method Symfony\\Component\\Console\\Command\\Command\:\:configure\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Command/ParseJobProcessCommand.php
+
+		-
+			message: '#^Method App\\Command\\ParseJobProcessCommand\:\:execute\(\) overrides method Symfony\\Component\\Console\\Command\\Command\:\:execute\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Command/ParseJobProcessCommand.php
+
+		-
+			message: '#^Call to an undefined method Symfony\\Component\\Console\\Application\:\:getKernel\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: src/Command/ParseJobWorkerCommand.php
+
+		-
+			message: '#^Method App\\Command\\ParseJobWorkerCommand\:\:configure\(\) overrides method Symfony\\Component\\Console\\Command\\Command\:\:configure\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Command/ParseJobWorkerCommand.php
+
+		-
+			message: '#^Method App\\Command\\ParseJobWorkerCommand\:\:execute\(\) overrides method Symfony\\Component\\Console\\Command\\Command\:\:execute\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Command/ParseJobWorkerCommand.php
+
+		-
+			message: '#^Offset ''average'' does not exist on array\{category\: string, total\: float\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: src/Controller/DashboardController.php
+
+		-
+			message: '#^Offset ''average_count'' does not exist on array\{category\: string, total\: float\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: src/Controller/DashboardController.php
+
+		-
+			message: '#^Offset ''count'' does not exist on array\{category\: string, total\: float\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: src/Controller/DashboardController.php
+
+		-
+			message: '#^Offset ''months'' does not exist on array\{category\: string, total\: float\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: src/Controller/DashboardController.php
+
+		-
+			message: '#^Property App\\Entity\\ApiKey\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: src/Entity/ApiKey.php
+
+		-
+			message: '#^Property App\\Entity\\ParseJob\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: src/Entity/ParseJob.php
+
+		-
+			message: '#^Method App\\Entity\\Receipt\:\:getTags\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Entity/Receipt.php
+
+		-
+			message: '#^Method App\\Entity\\Receipt\:\:setTags\(\) has parameter \$tags with no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Entity/Receipt.php
+
+		-
+			message: '#^Property App\\Entity\\Receipt\:\:\$id \(int\|null\) is never assigned int so it can be removed from the property type\.$#'
+			identifier: property.unusedType
+			count: 1
+			path: src/Entity/Receipt.php
+
+		-
+			message: '#^Property App\\Entity\\Receipt\:\:\$tags type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Entity/Receipt.php
+
+		-
+			message: '#^Method App\\EventSubscriber\\SecurityHeadersSubscriber\:\:getSubscribedEvents\(\) overrides method Symfony\\Component\\EventDispatcher\\EventSubscriberInterface\:\:getSubscribedEvents\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/EventSubscriber/SecurityHeadersSubscriber.php
+
+		-
+			message: '#^Method App\\Kernel\:\:getAllowedEnvs\(\) is unused\.$#'
+			identifier: method.unused
+			count: 1
+			path: src/Kernel.php
+
+		-
+			message: '#^Comparison operation "\>" between int\<1, max\> and 0 is always true\.$#'
+			identifier: greater.alwaysTrue
+			count: 1
+			path: src/Repository/ReceiptRepository.php
+
+		-
+			message: '#^Method App\\Repository\\ReceiptRepository\:\:findUniqueBusinesses\(\) should return array\<string, string\> but returns list\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repository/ReceiptRepository.php
+
+		-
+			message: '#^Method App\\Repository\\ReceiptRepository\:\:findUniqueCategories\(\) should return array\<string, string\> but returns list\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repository/ReceiptRepository.php
+
+		-
+			message: '#^Method App\\Repository\\ReceiptRepository\:\:findUniqueLocations\(\) should return array\<string, string\> but returns list\<mixed\>\.$#'
+			identifier: return.type
+			count: 1
+			path: src/Repository/ReceiptRepository.php
+
+		-
+			message: '#^Method App\\Security\\ApiKeyAuthenticator\:\:authenticate\(\) overrides method Symfony\\Component\\Security\\Http\\Authenticator\\AuthenticatorInterface\:\:authenticate\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Security/ApiKeyAuthenticator.php
+
+		-
+			message: '#^Method App\\Security\\ApiKeyAuthenticator\:\:onAuthenticationFailure\(\) overrides method Symfony\\Component\\Security\\Http\\Authenticator\\AuthenticatorInterface\:\:onAuthenticationFailure\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Security/ApiKeyAuthenticator.php
+
+		-
+			message: '#^Method App\\Security\\ApiKeyAuthenticator\:\:onAuthenticationSuccess\(\) overrides method Symfony\\Component\\Security\\Http\\Authenticator\\AuthenticatorInterface\:\:onAuthenticationSuccess\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Security/ApiKeyAuthenticator.php
+
+		-
+			message: '#^Method App\\Security\\ApiKeyAuthenticator\:\:supports\(\) overrides method Symfony\\Component\\Security\\Http\\Authenticator\\AuthenticatorInterface\:\:supports\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Security/ApiKeyAuthenticator.php
+
+		-
+			message: '#^Method App\\Security\\ApiKeyUser\:\:getRoles\(\) overrides method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getRoles\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Security/ApiKeyUser.php
+
+		-
+			message: '#^Method App\\Security\\ApiKeyUser\:\:getUserIdentifier\(\) overrides method Symfony\\Component\\Security\\Core\\User\\UserInterface\:\:getUserIdentifier\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Security/ApiKeyUser.php
+
+		-
+			message: '#^Class App\\Security\\ApiKeyUserProvider implements generic interface Symfony\\Component\\Security\\Core\\User\\UserProviderInterface but does not specify its types\: TUser$#'
+			identifier: missingType.generics
+			count: 1
+			path: src/Security/ApiKeyUserProvider.php
+
+		-
+			message: '#^Method App\\Security\\ApiKeyUserProvider\:\:loadUserByIdentifier\(\) overrides method Symfony\\Component\\Security\\Core\\User\\UserProviderInterface\<Symfony\\Component\\Security\\Core\\User\\UserInterface\>\:\:loadUserByIdentifier\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Security/ApiKeyUserProvider.php
+
+		-
+			message: '#^Method App\\Security\\ApiKeyUserProvider\:\:refreshUser\(\) overrides method Symfony\\Component\\Security\\Core\\User\\UserProviderInterface\<Symfony\\Component\\Security\\Core\\User\\UserInterface\>\:\:refreshUser\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Security/ApiKeyUserProvider.php
+
+		-
+			message: '#^Method App\\Security\\ApiKeyUserProvider\:\:supportsClass\(\) overrides method Symfony\\Component\\Security\\Core\\User\\UserProviderInterface\<Symfony\\Component\\Security\\Core\\User\\UserInterface\>\:\:supportsClass\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: src/Security/ApiKeyUserProvider.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\DashboardControllerTest has an uninitialized property \$apiKey\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/DashboardControllerTest.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\DashboardControllerTest has an uninitialized property \$client\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/DashboardControllerTest.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\DashboardControllerTest has an uninitialized property \$em\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/DashboardControllerTest.php
+
+		-
+			message: '#^Method App\\Tests\\Functional\\Controller\\DashboardControllerTest\:\:invalidDateRangeProvider\(\) return type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: tests/Functional/Controller/DashboardControllerTest.php
+
+		-
+			message: '#^Method App\\Tests\\Functional\\Controller\\DashboardControllerTest\:\:setUp\(\) overrides method PHPUnit\\Framework\\TestCase\:\:setUp\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: tests/Functional/Controller/DashboardControllerTest.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\DashboardControllerV12Test has an uninitialized property \$apiKey\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/DashboardControllerV12Test.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\DashboardControllerV12Test has an uninitialized property \$client\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/DashboardControllerV12Test.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\DashboardControllerV12Test has an uninitialized property \$em\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/DashboardControllerV12Test.php
+
+		-
+			message: '#^Method App\\Tests\\Functional\\Controller\\DashboardControllerV12Test\:\:setUp\(\) overrides method PHPUnit\\Framework\\TestCase\:\:setUp\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: tests/Functional/Controller/DashboardControllerV12Test.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\ReadOnlyApiKeyTest has an uninitialized property \$adminKey\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/ReadOnlyApiKeyTest.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\ReadOnlyApiKeyTest has an uninitialized property \$client\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/ReadOnlyApiKeyTest.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\ReadOnlyApiKeyTest has an uninitialized property \$em\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/ReadOnlyApiKeyTest.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\ReadOnlyApiKeyTest has an uninitialized property \$readOnlyKey\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/ReadOnlyApiKeyTest.php
+
+		-
+			message: '#^Method App\\Tests\\Functional\\Controller\\ReadOnlyApiKeyTest\:\:setUp\(\) overrides method PHPUnit\\Framework\\TestCase\:\:setUp\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: tests/Functional/Controller/ReadOnlyApiKeyTest.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\ReceiptControllerTest has an uninitialized property \$apiKey\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/ReceiptControllerTest.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\ReceiptControllerTest has an uninitialized property \$client\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/ReceiptControllerTest.php
+
+		-
+			message: '#^Class App\\Tests\\Functional\\Controller\\ReceiptControllerTest has an uninitialized property \$em\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Functional/Controller/ReceiptControllerTest.php
+
+		-
+			message: '#^Method App\\Tests\\Functional\\Controller\\ReceiptControllerTest\:\:setUp\(\) overrides method PHPUnit\\Framework\\TestCase\:\:setUp\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: tests/Functional/Controller/ReceiptControllerTest.php
+
+		-
+			message: '#^Call to method PHPUnit\\Framework\\Assert\:\:assertIsArray\(\) with array\<int, array\{category\: string, avg_monthly_total\: float\}\> will always evaluate to true\.$#'
+			identifier: method.alreadyNarrowedType
+			count: 1
+			path: tests/Unit/Repository/ReceiptRepositoryTest.php
+
+		-
+			message: '#^Class App\\Tests\\Unit\\Repository\\ReceiptRepositoryTest has an uninitialized property \$em\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Unit/Repository/ReceiptRepositoryTest.php
+
+		-
+			message: '#^Class App\\Tests\\Unit\\Repository\\ReceiptRepositoryTest has an uninitialized property \$repository\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: tests/Unit/Repository/ReceiptRepositoryTest.php
+
+		-
+			message: '#^Method App\\Tests\\Unit\\Repository\\ReceiptRepositoryTest\:\:setUp\(\) overrides method PHPUnit\\Framework\\TestCase\:\:setUp\(\) but is missing the \#\[\\Override\] attribute\.$#'
+			identifier: method.missingOverride
+			count: 1
+			path: tests/Unit/Repository/ReceiptRepositoryTest.php
+
+		-
+			message: '#^Property App\\Tests\\Unit\\Repository\\ReceiptRepositoryTest\:\:\$repository \(App\\Repository\\ReceiptRepository\) does not accept Doctrine\\ORM\\EntityRepository\<App\\Entity\\Receipt\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: tests/Unit/Repository/ReceiptRepositoryTest.php
+
+		-
+			message: '#^Call to function method_exists\(\) with ''Symfony\\\\Component\\\\Dotenv\\\\Dotenv'' and ''bootEnv'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: tests/bootstrap.php

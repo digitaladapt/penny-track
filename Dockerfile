@@ -1,5 +1,5 @@
 # ── Stage 1: Composer ──────────────────────────────────────────────
-FROM dunglas/frankenphp:1-php8.4 AS composer
+FROM dunglas/frankenphp:1-php8.5-trixie AS composer
 
 # System deps for composer install
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -31,7 +31,7 @@ RUN composer dump-autoload --no-dev --classmap-authoritative \
     && composer run-script --no-dev post-install-cmd
 
 # ── Stage 2: Runtime ───────────────────────────────────────────────
-FROM dunglas/frankenphp:1-php8.4 AS runtime
+FROM dunglas/frankenphp:1-php8.5-trixie AS app
 
 # Install only runtime system deps
 RUN apt-get update && apt-get install -y --no-install-recommends \

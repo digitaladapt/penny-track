@@ -213,7 +213,6 @@
             dl.innerHTML = res.map(c => `<option value="${c}">`).join('');
         } catch (e) { /* ignore */ }
     }
-    loadCategories();
 
     function retryJob(id) {
         if (!confirm('Retry this parse job?')) return;
@@ -316,5 +315,9 @@
     document.getElementById('manual-modal').addEventListener('click', (e) => {
         if (e.target === document.getElementById('manual-modal')) closeModal();
     });
+
+    /* The fetch is deferred; the listener registration above is not, because
+       Turbo re-executes this inline script after a visit and re-binds it. */
+    window.PennyTrack.ready(loadCategories);
 </script>
 {% endblock %}

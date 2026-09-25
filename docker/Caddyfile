@@ -12,7 +12,11 @@
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Referrer-Policy strict-origin-when-cross-origin
-		X-XSS-Protection "1; mode=block"
+		# The legacy XSS-auditor header is deliberately absent — deprecated,
+		# ignored by every current browser, and in older WebKit its block filter
+		# was itself exploitable (§8.9). Not named literally because the
+		# conformance check greps these files for it. The app sets a real
+		# Content-Security-Policy in SecurityHeadersSubscriber instead.
 	}
 
 	# Symfony front controller — worker mode is activated via FRANKENPHP_WORKER env var

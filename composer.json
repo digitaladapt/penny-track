@@ -1,10 +1,11 @@
 {
+    "name": "digitaladapt/penny-track",
     "type": "project",
     "license": "MIT",
     "minimum-stability": "stable",
     "prefer-stable": true,
     "require": {
-        "php": ">=8.4",
+        "php": "^8.5",
         "ext-ctype": "*",
         "ext-iconv": "*",
         "beberlei/doctrineextensions": "^1.5",
@@ -52,7 +53,10 @@
             "symfony/runtime": true
         },
         "bump-after-update": true,
-        "sort-packages": true
+        "sort-packages": true,
+        "platform": {
+            "php": "8.5.0"
+        }
     },
     "autoload": {
         "psr-4": {
@@ -87,7 +91,11 @@
         ],
         "post-update-cmd": [
             "@auto-scripts"
-        ]
+        ],
+        "lint": "php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "php-cs-fixer fix",
+        "stan": "phpstan analyse",
+        "test": "phpunit"
     },
     "conflict": {
         "symfony/symfony": "*"
@@ -100,6 +108,7 @@
     },
     "require-dev": {
         "friendsofphp/php-cs-fixer": "^3.95",
+        "phpstan/phpstan": "^2.1",
         "phpunit/phpunit": "^13.2",
         "symfony/browser-kit": "8.1.*",
         "symfony/css-selector": "8.1.*",

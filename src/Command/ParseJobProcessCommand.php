@@ -8,6 +8,7 @@ use App\Entity\ParseJob;
 use App\Entity\Receipt;
 use App\Repository\ParseJobRepository;
 use App\Service\LLM\LlmClient;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -15,6 +16,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Throwable;
 
 #[AsCommand(
     name: 'app:parse-jobs:process',
@@ -42,23 +44,25 @@ class ParseJobProcessCommand extends Command
 
         $job = $this->parseJobRepository->find($jobId);
 
-        if ($job === null) {
-            $io->error(sprintf('Parse job #%d not found', $jobId));
+        if (null === $job) {
+            $io->error(\sprintf('Parse job #%d not found', $jobId));
+
             return Command::FAILURE;
         }
 
-        if ($job->getStatus() !== ParseJob::STATUS_PROCESSING) {
-            $io->warning(sprintf('Parse job #%d is not in processing state (current: %s), skipping', $jobId, $job->getStatus()));
+        if (ParseJob::STATUS_PROCESSING !== $job->getStatus()) {
+            $io->warning(\sprintf('Parse job #%d is not in processing state (current: %s), skipping', $jobId, $job->getStatus()));
+
             return Command::SUCCESS;
         }
 
-        $io->text(sprintf(
+        $io->text(\sprintf(
             '[%s] Processing job #%d (attempt %d/%d): %s',
             date('Y-m-d H:i:s'),
             $job->getId(),
             $job->getAttempts() + 1,
             $job->getMaxAttempts(),
-            mb_substr($job->getRawText() ?? '', 0, 80)
+            mb_substr($job->getRawText() ?? '', 0, 80),
         ));
 
         // Increment attempt counter
@@ -78,21 +82,21 @@ class ParseJobProcessCommand extends Command
 
             $job->setReceipt($receipt);
             $job->setStatus(ParseJob::STATUS_COMPLETED);
-            $job->setCompletedAt(new \DateTimeImmutable());
+            $job->setCompletedAt(new DateTimeImmutable());
             $job->setLastError(null);
 
             $this->entityManager->flush();
 
-            $io->success(sprintf(
+            $io->success(\sprintf(
                 'Job #%d completed: %s — $%s (%s)',
                 $jobId,
                 $receipt->getBusiness(),
                 $receipt->getAmount(),
-                $receipt->getCategory()
+                $receipt->getCategory(),
             ));
 
             return Command::SUCCESS;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $errorMessage = $e->getMessage();
 
             if ($job->getAttempts() >= $job->getMaxAttempts()) {
@@ -104,12 +108,12 @@ class ParseJobProcessCommand extends Command
             $job->setLastError($errorMessage);
             $this->entityManager->flush();
 
-            $io->error(sprintf(
+            $io->error(\sprintf(
                 'Job #%d failed (attempt %d/%d): %s',
                 $jobId,
                 $job->getAttempts(),
                 $job->getMaxAttempts(),
-                $errorMessage
+                $errorMessage,
             ));
 
             return Command::FAILURE;
@@ -128,25 +132,25 @@ class ParseJobProcessCommand extends Command
         $receipt->setAmount(
             is_numeric($amount)
                 ? number_format((float) $amount, 2, '.', '')
-                : '0.00'
+                : '0.00',
         );
 
         // Validate business: must be a string
         $business = $parsed['business'] ?? 'Unknown';
-        $receipt->setBusiness(is_string($business) && $business !== '' ? $business : 'Unknown');
+        $receipt->setBusiness(\is_string($business) && '' !== $business ? $business : 'Unknown');
 
         // Validate category: must be a string
         $category = $parsed['category'] ?? 'Other';
-        $receipt->setCategory(is_string($category) && $category !== '' ? $category : 'Other');
+        $receipt->setCategory(\is_string($category) && '' !== $category ? $category : 'Other');
 
         // Validate location: must be a string or null
         $location = $parsed['location'] ?? null;
-        $receipt->setLocation(is_string($location) && $location !== '' ? $location : null);
+        $receipt->setLocation(\is_string($location) && '' !== $location ? $location : null);
 
         // Validate tags: must be an array of strings
         $tags = $parsed['tags'] ?? [];
-        if (is_array($tags)) {
-            $tags = array_values(array_filter($tags, fn ($t) => is_string($t)));
+        if (\is_array($tags)) {
+            $tags = array_values(array_filter($tags, static fn ($t) => \is_string($t)));
         } else {
             $tags = [];
         }
@@ -154,29 +158,29 @@ class ParseJobProcessCommand extends Command
 
         // Validate notes: must be a string or null
         $notes = $parsed['notes'] ?? $rawText;
-        $receipt->setNotes(is_string($notes) && $notes !== '' ? $notes : $rawText);
+        $receipt->setNotes(\is_string($notes) && '' !== $notes ? $notes : $rawText);
 
         $receipt->setRawInput($rawText);
 
         if (!empty($parsed['date'])) {
             try {
-                $parsedDate = new \DateTimeImmutable($parsed['date']);
+                $parsedDate = new DateTimeImmutable($parsed['date']);
 
                 // If the LLM returned a date without a time component (midnight),
                 // preserve the date but fill in the current time of day so
                 // receipts don't all get timestamped to 00:00:00.
-                if ($parsedDate->format('H:i:s') === '00:00:00') {
-                    $now = new \DateTimeImmutable();
+                if ('00:00:00' === $parsedDate->format('H:i:s')) {
+                    $now = new DateTimeImmutable();
                     $parsedDate = $parsedDate
                         ->setTime(
                             (int) $now->format('H'),
                             (int) $now->format('i'),
-                            (int) $now->format('s')
+                            (int) $now->format('s'),
                         );
                 }
 
                 $receipt->setCreatedAt($parsedDate);
-            } catch (\Throwable) {
+            } catch (Throwable) {
                 // keep default
             }
         }
@@ -186,7 +190,7 @@ class ParseJobProcessCommand extends Command
 
     private function buildSystemPrompt(): string
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $nowFormatted = $now->format('Y-m-d\\TH:i:s');
 
         return <<<PROMPT

@@ -111,7 +111,6 @@
             console.error('Failed to load autocomplete', e);
         }
     }
-    loadAutocomplete();
 
     // Natural language submit
     document.getElementById('nl-submit').addEventListener('click', async () => {
@@ -225,7 +224,21 @@
         }
     }
 
-    document.addEventListener('DOMContentLoaded', setDefaultDateTime);
-    manualForm.onreset = () => setTimeout(setDefaultDateTime, 0);
+    /*
+     * The listeners above are registered at parse time, which is fine: Turbo
+     * re-executes inline <body> scripts after a visit, so they re-bind to the
+     * incoming elements by themselves.
+     *
+     * The two calls below are different — they fetch and they touch form state,
+     * and neither should happen simply because the script was parsed. Deferring
+     * them to `ready` (a) waits until Turbo has settled the page and (b) keeps
+     * the default-datetime fill correctly ordered after any restore.
+     */
+    window.PennyTrack.ready(() => {
+        loadAutocomplete();
+        setDefaultDateTime();
+
+        manualForm.onreset = () => setTimeout(setDefaultDateTime, 0);
+    });
 </script>
 {% endblock %}

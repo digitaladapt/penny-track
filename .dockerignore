@@ -1,21 +1,68 @@
+# ── VCS & CI ──────────────────────────────────────────────────────────────
 .git
+.gitea
+.github
 .gitignore
-.phpunit.cache
-var/
-vendor/
-public/bundles/
-public/assets/
-assets/vendor/
+.gitattributes
+
+# ── Secrets: NEVER bake these into a layer ────────────────────────────────
+#
+# This build does `COPY . .` AFTER `composer dump-env prod --empty`, so a
+# developer's real `.env` lands at /app/.env in the final image and nothing
+# neutralises it. The layer keeps it, the image keeps it, and any image pushed
+# to a registry carries it. Bare `.env` was previously NOT ignored here — the
+# single highest-impact line in this file (GUIDING-LIGHT §6.1).
+.env
 .env.local
 .env.local.php
 .env.*.local
+.env.*.dev
+host.env
 config/secrets/prod/prod.decrypt.private.php
+
+# ── Local runtime state ───────────────────────────────────────────────────
+var/
+*.sqlite
+*.sqlite3
+*.db
+
+# ── Rebuilt inside the image from composer.lock ───────────────────────────
+vendor/
+
+# ── Generated asset output (recreated by assets:install / importmap:install) ─
+public/bundles/
+public/assets/
+assets/vendor/
+
+# ── Dev / test artefacts not needed at runtime ────────────────────────────
 tests/
+coverage/
+.phpunit.cache/
+.phpunit.result.cache
 phpunit.xml
-phpunit.xml.dist
+phpunit.dist.xml
+.php-cs-fixer.cache
+.php-cs-fixer.dist.php
+phpstan.neon.dist
+phpstan-baseline.neon
+.ci/
+
+# ── Build inputs that aren't app payload ──────────────────────────────────
 Dockerfile
 compose*.yaml
+docker-compose*.yaml
+docker-bake.hcl
+
+# ── Docs & host-side config ───────────────────────────────────────────────
+docs/
 *.md
 Caddyfile
 Domainfile
 run.sh
+deploy.sh
+
+# ── Editor / OS noise ─────────────────────────────────────────────────────
+.idea
+.vscode
+*.swp
+.DS_Store

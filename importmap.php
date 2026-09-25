@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Returns the importmap for this application.
  *
@@ -27,4 +29,6 @@ return [
     '@hotwired/stimulus' => ['version' => '3.2.2'],
     '@symfony/stimulus-bundle' => ['path' => './vendor/symfony/stimulus-bundle/assets/dist/loader.js'],
     '@hotwired/turbo' => ['version' => '8.0.23'],
+    'chart.js' => ['version' => '4.5.1'],
+    '@kurkle/color' => ['version' => '0.3.4'],
 ];

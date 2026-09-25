@@ -18,7 +18,7 @@ class ApiKeyUserProvider implements UserProviderInterface
     public function refreshUser(UserInterface $user): UserInterface
     {
         if (!$user instanceof ApiKeyUser) {
-            throw new UnsupportedUserException(sprintf('Invalid user class "%s".', get_class($user)));
+            throw new UnsupportedUserException(\sprintf('Invalid user class "%s".', $user::class));
         }
 
         return new ApiKeyUser();

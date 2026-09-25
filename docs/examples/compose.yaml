@@ -1,0 +1,50 @@
+# --- penny-track — deployable reference compose ----------------------------------
+#
+# This is the *reference deployment*: it runs the published image rather than
+# building from source. The `compose.yaml` at the repository root is the one that
+# builds locally from `Dockerfile`.
+#
+# Required secrets use `${VAR:?}` rather than `${VAR:-}`. That is deliberate and
+# it is the point of this file (GUIDING-LIGHT §4.4): the old `${APP_SECRET:-}`
+# form booted the app with a *silently empty* APP_SECRET, which is a real
+# security problem that produces no error message anywhere. `${VAR:?}` refuses
+# to start and names the variable that is missing.
+#
+#   cp docs/examples/.env.example host.env
+#   # then fill in APP_SECRET and LLM_API_KEY with real values
+#   docker compose -f docs/examples/compose.yaml --env-file host.env up -d
+
+services:
+  penny-track:
+    image: ${DOCKERHUB_TARGET:?set DOCKERHUB_TARGET, e.g. digitaladapt/penny-track}:${APP_VERSION:-latest}
+    container_name: penny-track
+    expose:
+      - 80
+    environment:
+      # ── required, no default on purpose ────────────────────────────────────
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required — generate one with openssl rand -hex 32}
+      LLM_API_KEY: ${LLM_API_KEY:?LLM_API_KEY is required — the LLM provider API key}
+
+      # ── optional, with documented defaults ─────────────────────────────────
+      APP_ENV: prod
+      DATABASE_URL: "sqlite:///%kernel.project_dir%/var/data/penny_track.db"
+      LLM_API_ENDPOINT: ${LLM_API_ENDPOINT:-https://api.openai.com/v1/chat/completions}
+      LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
+      LLM_TIMEOUT: ${LLM_TIMEOUT:-10}
+      MAX_BACKGROUND_JOBS: ${MAX_BACKGROUND_JOBS:-2}
+      LLM_WORKER_TIMEOUT: ${LLM_WORKER_TIMEOUT:-600}
+      PARSE_JOB_MAX_ATTEMPTS: ${PARSE_JOB_MAX_ATTEMPTS:-1}
+      MAILER_DSN: ${MAILER_DSN:-null://null}
+      BUDGET_GOAL: ${BUDGET_GOAL:-0}
+
+      # Needed for correct HTTPS detection (and therefore HSTS) when the app
+      # sits behind the Caddy edge proxy. Empty value = no proxy trusted.
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-127.0.0.1,PRIVATE_SUBNETS}
+    restart: unless-stopped
+    volumes:
+      # The SQLite database, logs and cache live here. Back this volume up;
+      # it *is* the application state.
+      - penny-track-var:/app/var
+
+volumes:
+  penny-track-var:

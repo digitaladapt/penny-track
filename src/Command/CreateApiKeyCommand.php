@@ -35,7 +35,7 @@ class CreateApiKeyCommand extends Command
         $io = new SymfonyStyle($input, $output);
 
         $key = bin2hex(random_bytes(32));
-        $hash = password_hash($key, PASSWORD_BCRYPT);
+        $hash = password_hash($key, \PASSWORD_BCRYPT);
 
         $apiKey = new ApiKey();
         $apiKey->setKeyHash($hash);
@@ -46,13 +46,13 @@ class CreateApiKeyCommand extends Command
 
         $type = $apiKey->isReadOnly() ? 'READ-ONLY' : 'ADMIN';
 
-        $io->success(sprintf('Created %s API key (id #%d)', $type, $apiKey->getId()));
+        $io->success(\sprintf('Created %s API key (id #%d)', $type, $apiKey->getId()));
         $io->text('Store this key now — it is shown only once:');
         $io->writeln('');
-        $io->writeln('    ' . $key);
+        $io->writeln('    '.$key);
         $io->writeln('');
         $io->text('Use it via the X-API-Key header, e.g.:');
-        $io->writeln('    curl -H "X-API-Key: ' . $key . '" https://host/api/receipts');
+        $io->writeln('    curl -H "X-API-Key: '.$key.'" https://host/api/receipts');
 
         return Command::SUCCESS;
     }

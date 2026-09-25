@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Tests\Unit\Entity;
 
 use App\Entity\Receipt;
+use DateTimeImmutable;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Validator\Validation;
 
 class ReceiptTest extends TestCase
 {
-    public function testReceiptCreation(): void
+    public function test_receipt_creation(): void
     {
         $receipt = new Receipt();
         $receipt->setAmount('45.50');
@@ -28,13 +29,13 @@ class ReceiptTest extends TestCase
         $this->assertSame('Team lunch', $receipt->getNotes());
     }
 
-    public function testTagsDefaultToEmptyArray(): void
+    public function test_tags_default_to_empty_array(): void
     {
         $receipt = new Receipt();
         $this->assertSame([], $receipt->getTags());
     }
 
-    public function testValidationFailsWithoutRequiredFields(): void
+    public function test_validation_fails_without_required_fields(): void
     {
         $validator = Validation::createValidatorBuilder()
             ->enableAttributeMapping()
@@ -43,10 +44,10 @@ class ReceiptTest extends TestCase
         $receipt = new Receipt();
         $errors = $validator->validate($receipt);
 
-        $this->assertGreaterThan(0, count($errors));
+        $this->assertGreaterThan(0, \count($errors));
     }
 
-    public function testValidationPassesWithRequiredFields(): void
+    public function test_validation_passes_with_required_fields(): void
     {
         $validator = Validation::createValidatorBuilder()
             ->enableAttributeMapping()
@@ -61,7 +62,7 @@ class ReceiptTest extends TestCase
         $this->assertCount(0, $errors);
     }
 
-    public function testValidationFailsWithNegativeAmount(): void
+    public function test_validation_fails_with_negative_amount(): void
     {
         $validator = Validation::createValidatorBuilder()
             ->enableAttributeMapping()
@@ -73,10 +74,10 @@ class ReceiptTest extends TestCase
         $receipt->setCategory('Food');
 
         $errors = $validator->validate($receipt);
-        $this->assertGreaterThan(0, count($errors));
+        $this->assertGreaterThan(0, \count($errors));
     }
 
-    public function testLifecycleCallbacksSetTimestamps(): void
+    public function test_lifecycle_callbacks_set_timestamps(): void
     {
         $receipt = new Receipt();
         $receipt->setAmount('10.00');
@@ -95,14 +96,14 @@ class ReceiptTest extends TestCase
         $this->assertGreaterThan($originalUpdated, $receipt->getUpdatedAt());
     }
 
-    public function testPrePersistDoesNotOverwriteExistingCreatedAt(): void
+    public function test_pre_persist_does_not_overwrite_existing_created_at(): void
     {
         $receipt = new Receipt();
         $receipt->setAmount('10.00');
         $receipt->setBusiness('Test');
         $receipt->setCategory('Food');
 
-        $customDate = new \DateTimeImmutable('2023-01-15 14:30:00');
+        $customDate = new DateTimeImmutable('2023-01-15 14:30:00');
         $receipt->setCreatedAt($customDate);
 
         $receipt->onPrePersist();

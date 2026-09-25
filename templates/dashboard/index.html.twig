@@ -35,7 +35,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-semibold text-gray-700">Monthly Spending by Category</h3>
-            <select id="budget-chart-months" class="text-xs border rounded-md px-2 py-1 bg-white">
+            <select id="budget-chart-months" class="border rounded-md px-2 py-1 bg-white">
                 <option value="1">1 month</option>
                 <option value="2" selected>2 months</option>
                 <option value="3">3 months</option>
@@ -59,7 +59,7 @@
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
         <div class="flex items-center justify-between mb-2">
             <h3 class="text-sm font-semibold text-gray-700">Top Businesses</h3>
-            <select id="top-businesses-limit" class="text-xs border rounded-md px-2 py-1 bg-white">
+            <select id="top-businesses-limit" class="border rounded-md px-2 py-1 bg-white">
                 <option value="5" selected>Show 5</option>
                 <option value="10">Show 10</option>
                 <option value="15">Show 15</option>
@@ -76,7 +76,7 @@
         <div class="flex items-center justify-between mb-3">
             <h2 class="text-lg font-semibold text-gray-900">Recent Transactions</h2>
             <div class="flex items-center gap-3">
-                <select id="recent-transactions-limit" class="text-xs border rounded-md px-2 py-1 bg-white">
+                <select id="recent-transactions-limit" class="border rounded-md px-2 py-1 bg-white">
                     <option value="10" selected>Show 10</option>
                     <option value="25">Show 25</option>
                     <option value="50">Show 50</option>
@@ -385,7 +385,7 @@
                         <td class="px-4 py-3"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">${escapeHtml(r.category)}</span></td>
                         <td class="px-4 py-3 text-right font-semibold text-gray-900">${formatCurrency(r.amount)}</td>
                         <td class="px-4 py-3 text-right">
-                            <button onclick="deleteReceipt(${r.id}, this)" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                            <button onclick="deleteReceipt(${r.id}, this)" class="text-red-500 hover:text-red-700 text-sm">Delete</button>
                         </td>
                     </tr>
                 `).join('');
@@ -409,29 +409,42 @@
         }
     }
 
-    // pull from local-storage and update selector on page
-    loadTopBusinessesLimit();
-    loadRecentTransactionsLimit();
-    loadBudgetChartMonths();
+    /*
+     * PennyTrack.ready() rather than running immediately, for two reasons:
+     *
+     *   1. This is a CLASSIC inline script, so it runs during HTML parsing.
+     *      Chart.js now arrives through `{{ importmap('app') }}`, which is a
+     *      MODULE and therefore deferred — `window.Chart` would still be
+     *      undefined here. Ready fires after the deferred scripts have run.
+     *   2. Turbo Drive is active, so a plain DOMContentLoaded listener would
+     *      only ever fire on the first visit to this page, not on subsequent
+     *      ones.
+     */
+    window.PennyTrack.ready(() => {
+        // pull from local-storage and update selector on page
+        loadTopBusinessesLimit();
+        loadRecentTransactionsLimit();
+        loadBudgetChartMonths();
 
-    // Top Businesses limit selector
-    document.getElementById('top-businesses-limit').addEventListener('change', (e) => {
-        localStorage.setItem('pennyTrack_topBusinessesLimit', e.target.value);
+        // Top Businesses limit selector
+        document.getElementById('top-businesses-limit').addEventListener('change', (e) => {
+            localStorage.setItem('pennyTrack_topBusinessesLimit', e.target.value);
+            loadDashboard();
+        });
+
+        // Recent Transactions limit selector
+        document.getElementById('recent-transactions-limit').addEventListener('change', (e) => {
+            localStorage.setItem('pennyTrack_recentTransactionsLimit', e.target.value);
+            loadDashboard();
+        });
+
+        // Budget chart months selector
+        document.getElementById('budget-chart-months').addEventListener('change', (e) => {
+            localStorage.setItem('pennyTrack_budgetChartMonths', e.target.value);
+            loadDashboard();
+        });
+
         loadDashboard();
     });
-
-    // Recent Transactions limit selector
-    document.getElementById('recent-transactions-limit').addEventListener('change', (e) => {
-        localStorage.setItem('pennyTrack_recentTransactionsLimit', e.target.value);
-        loadDashboard();
-    });
-
-    // Budget chart months selector
-    document.getElementById('budget-chart-months').addEventListener('change', (e) => {
-        localStorage.setItem('pennyTrack_budgetChartMonths', e.target.value);
-        loadDashboard();
-    });
-
-    loadDashboard();
 </script>
 {% endblock %}

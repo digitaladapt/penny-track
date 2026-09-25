@@ -26,7 +26,13 @@ security:
         - { path: ^/setup, roles: PUBLIC_ACCESS }
         - { path: ^/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/about, roles: PUBLIC_ACCESS }
+        # Both probes must be reachable WITHOUT a key: they exist so a
+        # container orchestrator can decide whether to route traffic here, and
+        # an orchestrator has no API key. Nothing sensitive is exposed —
+        # /api/health says "the process is up", /api/ready says "the database
+        # responds" (GUIDING-LIGHT §8.4).
         - { path: ^/api/health, roles: PUBLIC_ACCESS }
+        - { path: ^/api/ready, roles: PUBLIC_ACCESS }
         # Safe (read) API routes: any authenticated key works, including read-only.
         - { path: ^/api, methods: [GET, HEAD], roles: [ROLE_USER, ROLE_READ_ONLY] }
         # Everything else under /api (POST/PUT/DELETE/PATCH) requires full access.

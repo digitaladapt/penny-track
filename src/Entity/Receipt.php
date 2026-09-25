@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\ReceiptRepository;
+use DateTimeImmutable;
+use DateTimeInterface;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -44,22 +46,22 @@ class Receipt
     private ?string $rawInput = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    private ?\DateTimeInterface $createdAt = null;
+    private ?DateTimeInterface $createdAt = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    private ?\DateTimeInterface $updatedAt = null;
+    private ?DateTimeInterface $updatedAt = null;
 
     #[ORM\PrePersist]
     public function onPrePersist(): void
     {
-        $this->createdAt ??= new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->createdAt ??= new DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable();
     }
 
     #[ORM\PreUpdate]
     public function onPreUpdate(): void
     {
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -75,6 +77,7 @@ class Receipt
     public function setAmount(?string $amount): static
     {
         $this->amount = $amount;
+
         return $this;
     }
 
@@ -86,6 +89,7 @@ class Receipt
     public function setLocation(?string $location): static
     {
         $this->location = $location;
+
         return $this;
     }
 
@@ -97,6 +101,7 @@ class Receipt
     public function setBusiness(?string $business): static
     {
         $this->business = $business;
+
         return $this;
     }
 
@@ -108,6 +113,7 @@ class Receipt
     public function setCategory(?string $category): static
     {
         $this->category = $category;
+
         return $this;
     }
 
@@ -119,6 +125,7 @@ class Receipt
     public function setTags(?array $tags): static
     {
         $this->tags = $tags;
+
         return $this;
     }
 
@@ -130,6 +137,7 @@ class Receipt
     public function setNotes(?string $notes): static
     {
         $this->notes = $notes;
+
         return $this;
     }
 
@@ -141,28 +149,31 @@ class Receipt
     public function setRawInput(?string $rawInput): static
     {
         $this->rawInput = $rawInput;
+
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeInterface
+    public function getCreatedAt(): ?DateTimeInterface
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(?\DateTimeInterface $createdAt): static
+    public function setCreatedAt(?DateTimeInterface $createdAt): static
     {
         $this->createdAt = $createdAt;
+
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeInterface
+    public function getUpdatedAt(): ?DateTimeInterface
     {
         return $this->updatedAt;
     }
 
-    public function setUpdatedAt(?\DateTimeInterface $updatedAt): static
+    public function setUpdatedAt(?DateTimeInterface $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
+
         return $this;
     }
 }

@@ -1,27 +1,56 @@
-
 ###> symfony/framework-bundle ###
 /.env
-/.env.dev
 /.env.local
 /.env.local.php
 /.env.*.local
 /config/secrets/prod/prod.decrypt.private.php
 /public/bundles/
+/public/assets/
 /var/
 /vendor/
 ###< symfony/framework-bundle ###
 
+###> symfony/asset-mapper ###
+/assets/vendor/
+###< symfony/asset-mapper ###
+
 ###> phpunit/phpunit ###
 /phpunit.xml
 /.phpunit.cache/
+/.phpunit.result.cache
 ###< phpunit/phpunit ###
-
-###> symfony/asset-mapper ###
-/public/assets/
-/assets/vendor/
-###< symfony/asset-mapper ###
 
 ###> friendsofphp/php-cs-fixer ###
 /.php-cs-fixer.php
 /.php-cs-fixer.cache
 ###< friendsofphp/php-cs-fixer ###
+
+###> phpstan ###
+/var/phpstan/
+###< phpstan ###
+
+###> project tooling ###
+/config/reference.php
+/composer.phar
+/coverage/
+/tests/coverage/
+###< project tooling ###
+
+###> editors / OS ###
+/.idea/
+/.vscode/
+*.swp
+.DS_Store
+###< editors / OS ###
+
+###> local env / secrets ###
+/.env.test.local
+*local.env
+host.env
+###< local env / secrets ###
+
+###> databases ###
+*.sqlite
+*.sqlite3
+*.db
+###< databases ###

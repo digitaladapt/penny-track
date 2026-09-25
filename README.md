@@ -13,9 +13,9 @@ A fast, mobile-responsive web application for tracking personal expenses and rec
 
 ## Tech Stack
 
-- **Backend**: PHP 8.4 / Symfony 8.1
+- **Backend**: PHP 8.5 / Symfony 8.1
 - **Database**: SQLite (via Doctrine ORM — easy migration path)
-- **Frontend**: Twig + Tailwind CSS + Chart.js
+- **Frontend**: Twig + Turbo/Stimulus, AssetMapper (no CDN, no build step)
 - **Testing**: PHPUnit (unit + functional)
 - **Container**: FrankenPHP (Caddy-based, PHP worker mode)
 - **License**: MIT
@@ -26,7 +26,7 @@ A fast, mobile-responsive web application for tracking personal expenses and rec
 
 ```bash
 # Clone and configure
-cp .env.example .env
+cp docs/examples/.env.example .env
 # Edit .env: set APP_SECRET, LLM_API_KEY (generate one: php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;')
 
 # Build and run
@@ -57,17 +57,33 @@ symfony server:start
 
 Visit `http://localhost:8000` and follow the setup to generate your API key.
 
-### Code Style
+### Code quality
 
-This project follows [PSR-12](https://www.php-fig.org/psr/psr-12/) and includes `php-cs-fixer` as a dev dependency.
+Three gates, all runnable as composer scripts:
 
 ```bash
-# Check for style violations
-vendor/bin/php-cs-fixer fix --dry-run --diff
-
-# Auto-fix
-vendor/bin/php-cs-fixer fix
+composer lint     # php-cs-fixer --dry-run --diff  (style)
+composer stan     # PHPStan level 6               (correctness)
+composer test     # PHPUnit                       (behaviour)
+composer cs-fix   # apply style fixes
 ```
+
+The style config, PHPStan config and `.editorconfig` are **vendored leaves** from
+the shared standards repo: they are overwritten wholesale on sync, never merged,
+so they should not be hand-edited here.
+
+PHPStan ships with a committed baseline (`phpstan-baseline.neon`) that suppresses
+the findings that existed on the day it was adopted. **The baseline should only
+ever shrink** — new violations must be fixed rather than added to it.
+
+Conformance against the shared standard can be checked locally:
+
+```bash
+.ci/conformance.sh --profile=web-app .
+```
+
+It reports three states — pass, fail, and **skipped** — and a skipped check is
+explicitly *not* a pass.
 
 ## Configuration
 

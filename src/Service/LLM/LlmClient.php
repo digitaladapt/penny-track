@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Service\LLM;
 
+use RuntimeException;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class LlmClient
@@ -19,6 +20,7 @@ class LlmClient
 
     /**
      * @param array<int, array{role: string, content: string}> $messages
+     *
      * @return array<string, mixed>
      */
     public function chat(array $messages): array
@@ -34,8 +36,8 @@ class LlmClient
             'Accept' => 'application/json',
         ];
 
-        if ($this->apiKey !== '' && $this->apiKey !== 'change-me') {
-            $headers['Authorization'] = 'Bearer ' . $this->apiKey;
+        if ('' !== $this->apiKey && 'change-me' !== $this->apiKey) {
+            $headers['Authorization'] = 'Bearer '.$this->apiKey;
         }
 
         $response = $this->httpClient->request('POST', $this->apiEndpoint, [
@@ -47,21 +49,21 @@ class LlmClient
         $data = $response->toArray();
 
         if (!isset($data['choices'][0]['message']['content'])) {
-            throw new \RuntimeException('Invalid LLM response structure');
+            throw new RuntimeException('Invalid LLM response structure');
         }
 
         $content = $data['choices'][0]['message']['content'];
         $parsed = json_decode($content, true);
 
-        if (!is_array($parsed)) {
+        if (!\is_array($parsed)) {
             // Try to extract JSON from markdown code blocks
             if (preg_match('/```(?:json)?\s*([\s\S]*?)```/', $content, $matches)) {
                 $parsed = json_decode(trim($matches[1]), true);
             }
         }
 
-        if (!is_array($parsed)) {
-            throw new \RuntimeException('Could not parse LLM response as JSON: ' . $content);
+        if (!\is_array($parsed)) {
+            throw new RuntimeException('Could not parse LLM response as JSON: '.$content);
         }
 
         return $parsed;

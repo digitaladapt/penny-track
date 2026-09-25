@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\ParseJob;
+use DateInterval;
+use DateTimeImmutable;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -23,13 +25,13 @@ class ParseJobRepository extends ServiceEntityRepository
      * Returns the claimed job or null if none available.
      *
      * Uses a transaction with SELECT ... FOR UPDATE to prevent race
-         * conditions where two calls in the same worker cycle could claim
+     * conditions where two calls in the same worker cycle could claim
      * the same job (resulting in duplicate subprocesses).
      */
     public function claimNextPending(): ?ParseJob
     {
         $conn = $this->getEntityManager()->getConnection();
-        $now = (new \DateTimeImmutable())->format('Y-m-d H:i:s');
+        $now = (new DateTimeImmutable())->format('Y-m-d H:i:s');
 
         return $conn->transactional(function () use ($conn, $now): ?ParseJob {
             // Lock the row for update so concurrent callers can't grab the same job
@@ -38,10 +40,10 @@ class ParseJobRepository extends ServiceEntityRepository
                  WHERE status = ?
                  ORDER BY created_at ASC
                  LIMIT 1',
-                [ParseJob::STATUS_PENDING]
+                [ParseJob::STATUS_PENDING],
             )->fetchAssociative();
 
-            if ($row === false) {
+            if (false === $row) {
                 return null;
             }
 
@@ -49,7 +51,7 @@ class ParseJobRepository extends ServiceEntityRepository
 
             $conn->executeStatement(
                 'UPDATE parse_job SET status = ?, updated_at = ? WHERE id = ?',
-                [ParseJob::STATUS_PROCESSING, $now, $jobId]
+                [ParseJob::STATUS_PROCESSING, $now, $jobId],
             );
 
             // Clear the EM so we get a fresh entity with the updated status
@@ -116,9 +118,9 @@ class ParseJobRepository extends ServiceEntityRepository
      *
      * @return ParseJob[]
      */
-    public function findStaleProcessing(\DateInterval $threshold): array
+    public function findStaleProcessing(DateInterval $threshold): array
     {
-        $cutoff = (new \DateTimeImmutable())->sub($threshold);
+        $cutoff = (new DateTimeImmutable())->sub($threshold);
 
         return $this->createQueryBuilder('j')
             ->where('j.status = :status')
