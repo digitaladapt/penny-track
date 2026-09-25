@@ -38,7 +38,7 @@ class ApiKeyAuthenticator extends AbstractAuthenticator
 
         $apiKeyEntity = $this->apiKeyRepository->findByKey($apiKey);
 
-        if ($apiKeyEntity === null) {
+        if (null === $apiKeyEntity) {
             throw new CustomUserMessageAuthenticationException('Invalid API key');
         }
 
@@ -46,7 +46,7 @@ class ApiKeyAuthenticator extends AbstractAuthenticator
             ? [ApiKey::ROLE_READ_ONLY]
             : [ApiKey::ROLE_ADMIN];
 
-        return new SelfValidatingPassport(new UserBadge('user', fn () => new ApiKeyUser($role)));
+        return new SelfValidatingPassport(new UserBadge('user', static fn () => new ApiKeyUser($role)));
     }
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
@@ -58,7 +58,7 @@ class ApiKeyAuthenticator extends AbstractAuthenticator
     {
         return new JsonResponse(
             ['error' => strtr($exception->getMessageKey(), $exception->getMessageData())],
-            Response::HTTP_UNAUTHORIZED
+            Response::HTTP_UNAUTHORIZED,
         );
     }
 }

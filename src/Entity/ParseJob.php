@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Entity;
 
 use App\Repository\ParseJobRepository;
+use DateTimeImmutable;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ParseJobRepository::class)]
@@ -41,25 +42,25 @@ class ParseJob
     private ?Receipt $receipt = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
-    private ?\DateTimeImmutable $createdAt = null;
+    private ?DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
-    private ?\DateTimeImmutable $updatedAt = null;
+    private ?DateTimeImmutable $updatedAt = null;
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $completedAt = null;
+    private ?DateTimeImmutable $completedAt = null;
 
     #[ORM\PrePersist]
     public function onPrePersist(): void
     {
-        $this->createdAt ??= new \DateTimeImmutable();
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->createdAt ??= new DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable();
     }
 
     #[ORM\PreUpdate]
     public function onPreUpdate(): void
     {
-        $this->updatedAt = new \DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -75,6 +76,7 @@ class ParseJob
     public function setRawText(?string $rawText): static
     {
         $this->rawText = $rawText;
+
         return $this;
     }
 
@@ -86,6 +88,7 @@ class ParseJob
     public function setStatus(string $status): static
     {
         $this->status = $status;
+
         return $this;
     }
 
@@ -97,12 +100,14 @@ class ParseJob
     public function setAttempts(int $attempts): static
     {
         $this->attempts = $attempts;
+
         return $this;
     }
 
     public function incrementAttempts(): static
     {
-        $this->attempts++;
+        ++$this->attempts;
+
         return $this;
     }
 
@@ -114,6 +119,7 @@ class ParseJob
     public function setMaxAttempts(int $maxAttempts): static
     {
         $this->maxAttempts = $maxAttempts;
+
         return $this;
     }
 
@@ -125,6 +131,7 @@ class ParseJob
     public function setLastError(?string $lastError): static
     {
         $this->lastError = $lastError;
+
         return $this;
     }
 
@@ -136,39 +143,43 @@ class ParseJob
     public function setReceipt(?Receipt $receipt): static
     {
         $this->receipt = $receipt;
+
         return $this;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?DateTimeImmutable
     {
         return $this->createdAt;
     }
 
-    public function setCreatedAt(?\DateTimeImmutable $createdAt): static
+    public function setCreatedAt(?DateTimeImmutable $createdAt): static
     {
         $this->createdAt = $createdAt;
+
         return $this;
     }
 
-    public function getUpdatedAt(): ?\DateTimeImmutable
+    public function getUpdatedAt(): ?DateTimeImmutable
     {
         return $this->updatedAt;
     }
 
-    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static
+    public function setUpdatedAt(?DateTimeImmutable $updatedAt): static
     {
         $this->updatedAt = $updatedAt;
+
         return $this;
     }
 
-    public function getCompletedAt(): ?\DateTimeImmutable
+    public function getCompletedAt(): ?DateTimeImmutable
     {
         return $this->completedAt;
     }
 
-    public function setCompletedAt(?\DateTimeImmutable $completedAt): static
+    public function setCompletedAt(?DateTimeImmutable $completedAt): static
     {
         $this->completedAt = $completedAt;
+
         return $this;
     }
 }

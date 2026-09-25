@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Repository;
 
 use App\Entity\Receipt;
+use DateTimeImmutable;
+use DateTimeInterface;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -36,8 +38,8 @@ class ReceiptRepository extends ServiceEntityRepository
      * @return Receipt[]
      */
     public function findFiltered(
-        ?\DateTimeInterface $from = null,
-        ?\DateTimeInterface $to = null,
+        ?DateTimeInterface $from = null,
+        ?DateTimeInterface $to = null,
         int $limit = 10,
         int $offset = 0,
     ): array {
@@ -46,11 +48,11 @@ class ReceiptRepository extends ServiceEntityRepository
             ->setMaxResults($limit)
             ->setFirstResult($offset);
 
-        if ($from !== null) {
+        if (null !== $from) {
             $qb->andWhere('r.createdAt >= :from')
                 ->setParameter('from', $from);
         }
-        if ($to !== null) {
+        if (null !== $to) {
             $qb->andWhere('r.createdAt <= :to')
                 ->setParameter('to', $to);
         }
@@ -62,17 +64,17 @@ class ReceiptRepository extends ServiceEntityRepository
      * Count receipts with optional inclusive date-range filtering.
      */
     public function countFiltered(
-        ?\DateTimeInterface $from = null,
-        ?\DateTimeInterface $to = null,
+        ?DateTimeInterface $from = null,
+        ?DateTimeInterface $to = null,
     ): int {
         $qb = $this->createQueryBuilder('r')
             ->select('COUNT(r.id)');
 
-        if ($from !== null) {
+        if (null !== $from) {
             $qb->andWhere('r.createdAt >= :from')
                 ->setParameter('from', $from);
         }
-        if ($to !== null) {
+        if (null !== $to) {
             $qb->andWhere('r.createdAt <= :to')
                 ->setParameter('to', $to);
         }
@@ -123,7 +125,7 @@ class ReceiptRepository extends ServiceEntityRepository
         return array_values(array_filter($results));
     }
 
-    public function getTotalSpent(\DateTimeInterface $from, \DateTimeInterface $to): float
+    public function getTotalSpent(DateTimeInterface $from, DateTimeInterface $to): float
     {
         $result = $this->createQueryBuilder('r')
             ->select('SUM(r.amount)')
@@ -137,7 +139,7 @@ class ReceiptRepository extends ServiceEntityRepository
         return (float) ($result ?? 0);
     }
 
-    public function getCountInRange(\DateTimeInterface $from, \DateTimeInterface $to): int
+    public function getCountInRange(DateTimeInterface $from, DateTimeInterface $to): int
     {
         $result = $this->createQueryBuilder('r')
             ->select('COUNT(r.id)')
@@ -154,7 +156,7 @@ class ReceiptRepository extends ServiceEntityRepository
     /**
      * @return array<int, array{category: string, total: float}>
      */
-    public function getSpendingByCategory(\DateTimeInterface $from, \DateTimeInterface $to): array
+    public function getSpendingByCategory(DateTimeInterface $from, DateTimeInterface $to): array
     {
         return $this->createQueryBuilder('r')
             ->select('r.category, SUM(r.amount) as total, COUNT(r.id) as count')
@@ -171,10 +173,10 @@ class ReceiptRepository extends ServiceEntityRepository
     /**
      * @return array<int, array{date: string, total: float}>
      */
-    public function getSpendingOverTime(\DateTimeInterface $from, \DateTimeInterface $to): array
+    public function getSpendingOverTime(DateTimeInterface $from, DateTimeInterface $to): array
     {
         return $this->createQueryBuilder('r')
-            ->select("DATE(r.createdAt) as date, SUM(r.amount) as total")
+            ->select('DATE(r.createdAt) as date, SUM(r.amount) as total')
             ->where('r.createdAt >= :from')
             ->andWhere('r.createdAt <= :to')
             ->groupBy('date')
@@ -188,7 +190,7 @@ class ReceiptRepository extends ServiceEntityRepository
     /**
      * @return array<int, array{business: string, total: float, count: int}>
      */
-    public function getTopBusinesses(\DateTimeInterface $from, \DateTimeInterface $to, int $limit = 5): array
+    public function getTopBusinesses(DateTimeInterface $from, DateTimeInterface $to, int $limit = 5): array
     {
         return $this->createQueryBuilder('r')
             ->select('r.business, SUM(r.amount) as total, COUNT(r.id) as count')
@@ -206,7 +208,7 @@ class ReceiptRepository extends ServiceEntityRepository
     /**
      * @return array<int, array{category: string, total: float}>
      */
-    public function getCategoryAverages(\DateTimeInterface $from, \DateTimeInterface $to): array
+    public function getCategoryAverages(DateTimeInterface $from, DateTimeInterface $to): array
     {
         return $this->createQueryBuilder('r')
             ->select('r.category, AVG(r.amount) as average, (COUNT(r.id) / COUNT(DISTINCT STRFTIME(\'%Y-%m\', r.createdAt))) as average_count, COUNT(DISTINCT STRFTIME(\'%Y-%m\', r.createdAt)) as months')
@@ -226,8 +228,8 @@ class ReceiptRepository extends ServiceEntityRepository
      */
     public function getCategoryMonthlyAverages(int $months = 3): array
     {
-        $from = new \DateTimeImmutable("-{$months} months");
-        $to = new \DateTimeImmutable();
+        $from = new DateTimeImmutable("-{$months} months");
+        $to = new DateTimeImmutable();
 
         $rows = $this->createQueryBuilder('r')
             ->select("STRFTIME('%Y-%m', r.createdAt) as month, r.category, SUM(r.amount) as total")
@@ -250,7 +252,7 @@ class ReceiptRepository extends ServiceEntityRepository
             $countByCategory[$cat] = ($countByCategory[$cat] ?? 0) + 1;
         }
 
-        return array_map(function ($cat) use ($sumByCategory, $countByCategory) {
+        return array_map(static function ($cat) use ($sumByCategory, $countByCategory) {
             return [
                 'category' => $cat,
                 'avg_monthly_total' => $countByCategory[$cat] > 0
@@ -270,8 +272,8 @@ class ReceiptRepository extends ServiceEntityRepository
      */
     public function getMonthlyCategoryBreakdown(int $months): array
     {
-        $now = new \DateTimeImmutable();
-        $from = $now->modify("first day of -" . ($months - 1) . " months midnight");
+        $now = new DateTimeImmutable();
+        $from = $now->modify('first day of -'.($months - 1).' months midnight');
 
         $rows = $this->createQueryBuilder('r')
             ->select("STRFTIME('%Y-%m', r.createdAt) as month, r.category, SUM(r.amount) as total")
@@ -301,11 +303,11 @@ class ReceiptRepository extends ServiceEntityRepository
      * Find a duplicate receipt: same amount, business, and category created
      * within the given number of minutes before the reference time.
      *
-     * @param string               $amount   Normalized amount string (e.g. "45.50")
-     * @param string               $business Business name
-     * @param string               $category Category name
-     * @param \DateTimeInterface   $since    Lower-bound datetime (inclusive)
-     * @param \DateTimeInterface   $until    Upper-bound datetime (inclusive)
+     * @param string            $amount   Normalized amount string (e.g. "45.50")
+     * @param string            $business Business name
+     * @param string            $category Category name
+     * @param DateTimeInterface $since    Lower-bound datetime (inclusive)
+     * @param DateTimeInterface $until    Upper-bound datetime (inclusive)
      *
      * @return Receipt|null The first matching receipt, or null if none found
      */
@@ -313,8 +315,8 @@ class ReceiptRepository extends ServiceEntityRepository
         string $amount,
         string $business,
         string $category,
-        \DateTimeInterface $since,
-        \DateTimeInterface $until,
+        DateTimeInterface $since,
+        DateTimeInterface $until,
     ): ?Receipt {
         return $this->createQueryBuilder('r')
             ->where('r.amount = :amount')
@@ -338,7 +340,7 @@ class ReceiptRepository extends ServiceEntityRepository
      *
      * @return array{id: int, business: string, amount: float, date: string}|null
      */
-    public function getLargestReceipt(\DateTimeInterface $from, \DateTimeInterface $to): ?array
+    public function getLargestReceipt(DateTimeInterface $from, DateTimeInterface $to): ?array
     {
         return $this->createQueryBuilder('r')
             ->select('r.id as id, r.business as business, r.amount as amount, DATE(r.createdAt) as date')

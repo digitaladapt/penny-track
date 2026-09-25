@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Controller;
 
 use App\Entity\ApiKey;
 use App\Entity\Receipt;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -38,19 +39,19 @@ final class DashboardControllerV12Test extends WebTestCase
         // Create API key
         $this->apiKey = bin2hex(random_bytes(32));
         $apiKeyEntity = new ApiKey();
-        $apiKeyEntity->setKeyHash(password_hash($this->apiKey, PASSWORD_BCRYPT));
+        $apiKeyEntity->setKeyHash(password_hash($this->apiKey, \PASSWORD_BCRYPT));
         $this->em->persist($apiKeyEntity);
         $this->em->flush();
     }
 
     /* ------------------------------------------------------------------ */
-    /* Spending by Category — Backward Compatibility                      */
+    /* Spending by Category — Backward Compatibility */
     /* ------------------------------------------------------------------ */
 
-    public function testSpendingByCategoryBackwardCompatibleWithoutComparisonParam(): void
+    public function test_spending_by_category_backward_compatible_without_comparison_param(): void
     {
         // Seed one receipt this month
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $r = new Receipt();
         $r->setAmount('42.00');
         $r->setBusiness('TestBiz');
@@ -69,12 +70,12 @@ final class DashboardControllerV12Test extends WebTestCase
         $this->assertIsArray($data);
         $this->assertCount(1, $data);
         $this->assertSame('Food', $data[0]['category']);
-        $this->assertEqualsWithDelta(42.00, (float)$data[0]['total'], 0.01);
+        $this->assertEqualsWithDelta(42.00, (float) $data[0]['total'], 0.01);
     }
 
-    public function testSpendingByCategoryComparisonFalseReturnsFlatArray(): void
+    public function test_spending_by_category_comparison_false_returns_flat_array(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $r = new Receipt();
         $r->setAmount('15.00');
         $r->setBusiness('X');
@@ -94,15 +95,15 @@ final class DashboardControllerV12Test extends WebTestCase
     }
 
     /* ------------------------------------------------------------------ */
-    /* Top Businesses — Configurable Limit                                */
+    /* Top Businesses — Configurable Limit */
     /* ------------------------------------------------------------------ */
 
-    public function testTopBusinessesDefaultLimitOf5(): void
+    public function test_top_businesses_default_limit_of5(): void
     {
         // Create 8 businesses with receipts this month
-        for ($i = 1; $i <= 8; $i++) {
+        for ($i = 1; $i <= 8; ++$i) {
             $r = new Receipt();
-            $r->setAmount((string)($i * 10));
+            $r->setAmount((string) ($i * 10));
             $r->setBusiness("TopBiz$i");
             $r->setCategory('Food');
             $this->em->persist($r);
@@ -118,11 +119,11 @@ final class DashboardControllerV12Test extends WebTestCase
         $this->assertCount(5, $data);
     }
 
-    public function testTopBusinessesLimit10ReturnsTen(): void
+    public function test_top_businesses_limit10_returns_ten(): void
     {
-        for ($i = 1; $i <= 12; $i++) {
+        for ($i = 1; $i <= 12; ++$i) {
             $r = new Receipt();
-            $r->setAmount((string)($i * 5));
+            $r->setAmount((string) ($i * 5));
             $r->setBusiness("Biz$i");
             $r->setCategory('Food');
             $this->em->persist($r);
@@ -138,11 +139,11 @@ final class DashboardControllerV12Test extends WebTestCase
         $this->assertCount(10, $data);
     }
 
-    public function testTopBusinessesLimit15ReturnsFifteen(): void
+    public function test_top_businesses_limit15_returns_fifteen(): void
     {
-        for ($i = 1; $i <= 20; $i++) {
+        for ($i = 1; $i <= 20; ++$i) {
             $r = new Receipt();
-            $r->setAmount((string)($i * 3));
+            $r->setAmount((string) ($i * 3));
             $r->setBusiness("Biz$i");
             $r->setCategory('Food');
             $this->em->persist($r);
@@ -157,11 +158,11 @@ final class DashboardControllerV12Test extends WebTestCase
         $this->assertCount(15, $data);
     }
 
-    public function testTopBusinessesLimit25ReturnsUpToTwentyFive(): void
+    public function test_top_businesses_limit25_returns_up_to_twenty_five(): void
     {
-        for ($i = 1; $i <= 30; $i++) {
+        for ($i = 1; $i <= 30; ++$i) {
             $r = new Receipt();
-            $r->setAmount((string)($i * 2));
+            $r->setAmount((string) ($i * 2));
             $r->setBusiness("Biz$i");
             $r->setCategory('Food');
             $this->em->persist($r);
@@ -177,11 +178,11 @@ final class DashboardControllerV12Test extends WebTestCase
         $this->assertCount(25, $data);
     }
 
-    public function testTopBusinessesInvalidLimitFallsBackToDefault(): void
+    public function test_top_businesses_invalid_limit_falls_back_to_default(): void
     {
-        for ($i = 1; $i <= 10; $i++) {
+        for ($i = 1; $i <= 10; ++$i) {
             $r = new Receipt();
-            $r->setAmount((string)($i * 10));
+            $r->setAmount((string) ($i * 10));
             $r->setBusiness("Biz$i");
             $r->setCategory('Food');
             $this->em->persist($r);
@@ -199,18 +200,18 @@ final class DashboardControllerV12Test extends WebTestCase
     }
 
     /* ------------------------------------------------------------------ */
-    /* Insights — Improvements & New Behaviors                            */
+    /* Insights — Improvements & New Behaviors */
     /* ------------------------------------------------------------------ */
 
-    public function testInsightsNoSpentLessInsightAfterRemoval(): void
+    public function test_insights_no_spent_less_insight_after_removal(): void
     {
         // Last month: very high spending ($1000)
         // This month: much lower ($200) — the "spent X% less" insight was intentionally removed
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $startOfLastMonth = (clone $now)->modify('first day of last month midnight');
         $endOfLastMonth = (clone $now)->modify('first day of this month midnight')->modify('-1 second');
 
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 5; ++$i) {
             $r = new Receipt();
             $r->setAmount('200.00');
             $r->setBusiness("LastMonth$i");
@@ -221,7 +222,7 @@ final class DashboardControllerV12Test extends WebTestCase
             $this->em->persist($r);
         }
 
-        for ($i = 0; $i < 2; $i++) {
+        for ($i = 0; $i < 2; ++$i) {
             $r = new Receipt();
             $r->setAmount('100.00');
             $r->setBusiness("ThisMonth$i");
@@ -253,7 +254,7 @@ final class DashboardControllerV12Test extends WebTestCase
         $this->assertFalse($foundLessInsight, 'The "spent less than last month" insight should no longer be emitted');
     }
 
-    public function testInsightsReturnsArray(): void
+    public function test_insights_returns_array(): void
     {
         // Basic sanity: empty data still returns valid array
         $this->client->request('GET', '/api/dashboard/insights', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);

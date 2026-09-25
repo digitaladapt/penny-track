@@ -7,13 +7,16 @@ namespace App\Controller;
 use App\Entity\ParseJob;
 use App\Entity\Receipt;
 use App\Repository\ReceiptRepository;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Throwable;
 
 class ReceiptController extends AbstractController
 {
@@ -43,19 +46,19 @@ class ReceiptController extends AbstractController
         $to = null;
         if ($request->query->has('from') || $request->query->has('to')) {
             $from = $this->parseDateParam($request->query->get('from'));
-            $to   = $this->parseDateParam($request->query->get('to'));
+            $to = $this->parseDateParam($request->query->get('to'));
 
-            if ($from === null || $to === null) {
+            if (null === $from || null === $to) {
                 return new JsonResponse(
                     ['error' => "Invalid date range. 'from' and 'to' must be valid dates (e.g. 2025-01-01)."],
-                    Response::HTTP_BAD_REQUEST
+                    Response::HTTP_BAD_REQUEST,
                 );
             }
 
             if ($to < $from) {
                 return new JsonResponse(
                     ['error' => "Invalid date range. 'to' must not be before 'from'."],
-                    Response::HTTP_BAD_REQUEST
+                    Response::HTTP_BAD_REQUEST,
                 );
             }
         }
@@ -81,6 +84,7 @@ class ReceiptController extends AbstractController
         if (!$receipt) {
             return new JsonResponse(['error' => 'Not found'], Response::HTTP_NOT_FOUND);
         }
+
         return new JsonResponse($this->serializeReceipt($receipt));
     }
 
@@ -88,23 +92,24 @@ class ReceiptController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        if (!is_array($data)) {
+        if (!\is_array($data)) {
             return new JsonResponse(['error' => 'Invalid JSON body'], Response::HTTP_BAD_REQUEST);
         }
         $receipt = $this->hydrateReceipt(new Receipt(), $data);
 
         $errors = $this->validator->validate($receipt);
-        if (count($errors) > 0) {
+        if (\count($errors) > 0) {
             $messages = [];
             foreach ($errors as $error) {
                 $messages[$error->getPropertyPath()] = $error->getMessage();
             }
+
             return new JsonResponse(['errors' => $messages], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
         // Duplicate detection: reject if an identical receipt (same amount,
         // business, and category) was created within the last 5 minutes.
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $fiveMinutesAgo = $now->modify('-5 minutes');
         $createdAt = $receipt->getCreatedAt() ?? $now;
         $duplicate = $this->receiptRepository->findRecentDuplicate(
@@ -114,7 +119,7 @@ class ReceiptController extends AbstractController
             $fiveMinutesAgo,
             $createdAt,
         );
-        if ($duplicate !== null) {
+        if (null !== $duplicate) {
             return new JsonResponse(
                 ['error' => 'A receipt with the same amount, business, and category was logged within the last 5 minutes. Possible duplicate submission.'],
                 Response::HTTP_CONFLICT,
@@ -136,17 +141,18 @@ class ReceiptController extends AbstractController
         }
 
         $data = json_decode($request->getContent(), true);
-        if (!is_array($data)) {
+        if (!\is_array($data)) {
             return new JsonResponse(['error' => 'Invalid JSON body'], Response::HTTP_BAD_REQUEST);
         }
         $receipt = $this->hydrateReceipt($receipt, $data);
 
         $errors = $this->validator->validate($receipt);
-        if (count($errors) > 0) {
+        if (\count($errors) > 0) {
             $messages = [];
             foreach ($errors as $error) {
                 $messages[$error->getPropertyPath()] = $error->getMessage();
             }
+
             return new JsonResponse(['errors' => $messages], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -173,12 +179,12 @@ class ReceiptController extends AbstractController
     public function parse(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        if (!is_array($data)) {
+        if (!\is_array($data)) {
             return new JsonResponse(['error' => 'Invalid JSON body'], Response::HTTP_BAD_REQUEST);
         }
         $text = trim($data['text'] ?? '');
 
-        if ($text === '') {
+        if ('' === $text) {
             return new JsonResponse(['error' => 'Text is required'], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -219,15 +225,15 @@ class ReceiptController extends AbstractController
      * Safely parse a date query parameter, returning null for empty or
      * malformed input instead of throwing a 500.
      */
-    private function parseDateParam(?string $value): ?\DateTimeImmutable
+    private function parseDateParam(?string $value): ?DateTimeImmutable
     {
-        if ($value === null || trim($value) === '') {
+        if (null === $value || '' === trim($value)) {
             return null;
         }
 
         try {
-            return new \DateTimeImmutable($value);
-        } catch (\Exception) {
+            return new DateTimeImmutable($value);
+        } catch (Exception) {
             return null;
         }
     }
@@ -256,34 +262,32 @@ class ReceiptController extends AbstractController
      */
     private function hydrateReceipt(Receipt $receipt, array $data): Receipt
     {
-        if (array_key_exists('amount', $data)) {
+        if (\array_key_exists('amount', $data)) {
             $receipt->setAmount(is_numeric($data['amount']) ? number_format((float) $data['amount'], 2, '.', '') : null);
         }
-        if (array_key_exists('business', $data)) {
+        if (\array_key_exists('business', $data)) {
             $receipt->setBusiness($data['business'] ?? null);
         }
-        if (array_key_exists('category', $data)) {
+        if (\array_key_exists('category', $data)) {
             $receipt->setCategory($data['category'] ?? null);
         }
-        if (array_key_exists('location', $data)) {
+        if (\array_key_exists('location', $data)) {
             $receipt->setLocation($data['location'] ?: null);
         }
-        if (array_key_exists('tags', $data)) {
-            $receipt->setTags(is_array($data['tags']) ? $data['tags'] : []);
+        if (\array_key_exists('tags', $data)) {
+            $receipt->setTags(\is_array($data['tags']) ? $data['tags'] : []);
         }
-        if (array_key_exists('notes', $data)) {
+        if (\array_key_exists('notes', $data)) {
             $receipt->setNotes($data['notes'] ?: null);
         }
-        if (array_key_exists('created_at', $data) && !empty($data['created_at'])) {
+        if (\array_key_exists('created_at', $data) && !empty($data['created_at'])) {
             try {
-                $receipt->setCreatedAt(new \DateTimeImmutable($data['created_at']));
-            } catch (\Throwable) {
+                $receipt->setCreatedAt(new DateTimeImmutable($data['created_at']));
+            } catch (Throwable) {
                 // ignore invalid dates, default will be used
             }
         }
 
         return $receipt;
     }
-
-
 }

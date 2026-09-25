@@ -6,6 +6,7 @@ namespace App\Tests\Unit\Repository;
 
 use App\Entity\Receipt;
 use App\Repository\ReceiptRepository;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
@@ -30,14 +31,14 @@ class ReceiptRepositoryTest extends KernelTestCase
         $this->repository = $this->em->getRepository(Receipt::class);
     }
 
-    public function testGetTopBusinessesWithLimit(): void
+    public function test_get_top_businesses_with_limit(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
 
         // Create 5 unique businesses with different amounts
-        for ($i = 1; $i <= 5; $i++) {
+        for ($i = 1; $i <= 5; ++$i) {
             $r = new Receipt();
-            $r->setAmount((string)($i * 10));
+            $r->setAmount((string) ($i * 10));
             $r->setBusiness("Biz$i");
             $r->setCategory('Food');
             $r->setCreatedAt($now);
@@ -51,9 +52,9 @@ class ReceiptRepositoryTest extends KernelTestCase
         $this->assertSame('Biz5', $result[0]['business']);
     }
 
-    public function testGetSpendingByCategoryReturnsCorrectTotals(): void
+    public function test_get_spending_by_category_returns_correct_totals(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
 
         $r1 = new Receipt();
         $r1->setAmount('40.00');
@@ -81,28 +82,28 @@ class ReceiptRepositoryTest extends KernelTestCase
         $result = $this->repository->getSpendingByCategory($now, $now);
 
         // Food should total 100.00
-        $food = array_filter($result, fn ($row) => $row['category'] === 'Food');
-        $transport = array_filter($result, fn ($row) => $row['category'] === 'Transport');
+        $food = array_filter($result, static fn ($row) => 'Food' === $row['category']);
+        $transport = array_filter($result, static fn ($row) => 'Transport' === $row['category']);
 
         $this->assertCount(1, $food);
-        $this->assertEqualsWithDelta(100.00, (float)$food[array_key_first($food)]['total'], 0.01);
+        $this->assertEqualsWithDelta(100.00, (float) $food[array_key_first($food)]['total'], 0.01);
         $this->assertCount(1, $transport);
-        $this->assertEqualsWithDelta(25.00, (float)$transport[array_key_first($transport)]['total'], 0.01);
+        $this->assertEqualsWithDelta(25.00, (float) $transport[array_key_first($transport)]['total'], 0.01);
     }
 
-    public function testGetCategoryMonthlyAverages(): void
+    public function test_get_category_monthly_averages(): void
     {
         // Create receipts spanning last 3 months in Food category:
         // Month -2: $100 total
         // Month -1: $200 total
         // Current month: $300 total (not included in average)
 
-        $month2Ago = new \DateTimeImmutable('-2 months');
-        $month1Ago = new \DateTimeImmutable('-1 month');
-        $now = new \DateTimeImmutable();
+        $month2Ago = new DateTimeImmutable('-2 months');
+        $month1Ago = new DateTimeImmutable('-1 month');
+        $now = new DateTimeImmutable();
 
         // Month -2 receipts ($100 total)
-        for ($i = 0; $i < 4; $i++) {
+        for ($i = 0; $i < 4; ++$i) {
             $r = new Receipt();
             $r->setAmount('25.00');
             $r->setBusiness("M2Biz$i");
@@ -115,7 +116,7 @@ class ReceiptRepositoryTest extends KernelTestCase
         }
 
         // Month -1 receipts ($200 total)
-        for ($i = 0; $i < 4; $i++) {
+        for ($i = 0; $i < 4; ++$i) {
             $r = new Receipt();
             $r->setAmount('50.00');
             $r->setBusiness("M1Biz$i");
@@ -127,7 +128,7 @@ class ReceiptRepositoryTest extends KernelTestCase
         }
 
         // Current month receipts ($300 total) - should not affect average of last 3 months' monthly totals
-        for ($i = 0; $i < 3; $i++) {
+        for ($i = 0; $i < 3; ++$i) {
             $r = new Receipt();
             $r->setAmount('100.00');
             $r->setBusiness("NowBiz$i");
@@ -147,27 +148,27 @@ class ReceiptRepositoryTest extends KernelTestCase
         // We expect Food to appear with some average based on available monthly totals.
         $foodAvg = null;
         foreach ($averages as $row) {
-            if ($row['category'] === 'Food') {
-                $foodAvg = (float)$row['avg_monthly_total'];
+            if ('Food' === $row['category']) {
+                $foodAvg = (float) $row['avg_monthly_total'];
                 break;
             }
         }
 
         // Assert Food category average exists and is reasonable (> 0, < sum of all receipts)
-        $this->assertNotNull($foodAvg, "Expected to find Food in monthly averages");
-        $this->assertGreaterThan(150.0, $foodAvg, "Food avg should be at least $150 based on seeded data");
-        $this->assertLessThan(400.0, $foodAvg, "Food avg should not exceed total receipts");
+        $this->assertNotNull($foodAvg, 'Expected to find Food in monthly averages');
+        $this->assertGreaterThan(150.0, $foodAvg, 'Food avg should be at least $150 based on seeded data');
+        $this->assertLessThan(400.0, $foodAvg, 'Food avg should not exceed total receipts');
     }
 
-    public function testGetCategoryMonthlyAveragesReturnsEmptyForNoData(): void
+    public function test_get_category_monthly_averages_returns_empty_for_no_data(): void
     {
         $averages = $this->repository->getCategoryMonthlyAverages(3);
         $this->assertIsArray($averages);
     }
 
-    public function testFindRecentDuplicateFindsMatch(): void
+    public function test_find_recent_duplicate_finds_match(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $twoMinutesAgo = $now->modify('-2 minutes');
 
         $r = new Receipt();
@@ -186,9 +187,9 @@ class ReceiptRepositoryTest extends KernelTestCase
         $this->assertSame('25.00', $result->getAmount());
     }
 
-    public function testFindRecentDuplicateReturnsNullWhenOutsideWindow(): void
+    public function test_find_recent_duplicate_returns_null_when_outside_window(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $sixMinutesAgo = $now->modify('-6 minutes');
 
         $r = new Receipt();
@@ -205,9 +206,9 @@ class ReceiptRepositoryTest extends KernelTestCase
         $this->assertNull($result);
     }
 
-    public function testFindRecentDuplicateReturnsNullWhenFieldsDiffer(): void
+    public function test_find_recent_duplicate_returns_null_when_fields_differ(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
 
         $r = new Receipt();
         $r->setAmount('25.00');
@@ -227,9 +228,9 @@ class ReceiptRepositoryTest extends KernelTestCase
         $this->assertNull($this->repository->findRecentDuplicate('25.00', 'Target', 'Food', $fiveMinutesAgo, $now));
     }
 
-    public function testGetLargestReceiptInDateRange(): void
+    public function test_get_largest_receipt_in_date_range(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
 
         $r1 = new Receipt();
         $r1->setAmount('50.00');
@@ -258,12 +259,12 @@ class ReceiptRepositoryTest extends KernelTestCase
 
         $this->assertNotNull($largest);
         $this->assertSame('BigBiz', $largest['business']);
-        $this->assertEqualsWithDelta(250.00, (float)$largest['amount'], 0.01);
+        $this->assertEqualsWithDelta(250.00, (float) $largest['amount'], 0.01);
     }
 
-    public function testGetLargestReceiptReturnsNullWhenNoReceipts(): void
+    public function test_get_largest_receipt_returns_null_when_no_receipts(): void
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $result = $this->repository->getLargestReceipt($now, $now);
         $this->assertNull($result);
     }

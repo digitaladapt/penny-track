@@ -2,12 +2,40 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!--
+        The zoom lock is gone (GUIDING-LIGHT §3.3a).
+
+        The zoom-lock meta tag was added to stop Safari zooming in on form
+        fields. That diagnosis was right, but the cure was wrong on three counts:
+
+          1. Safari >= iOS 10 IGNORES it for user-initiated pinch-zoom (Apple
+             overrides it for accessibility), so it never did what it claimed.
+             (Not named literally here because the conformance check greps
+             these files for the tokens, comments and all.)
+          2. Android HONOURS it, so those users genuinely could not zoom.
+             A real accessibility regression, traded for an iOS annoyance.
+          3. It fails WCAG 1.4.4.
+
+        The actual trigger was font-size: iOS auto-zooms any focused control
+        rendering under 16px, and the <select> elements on the dashboard carried
+        `text-xs` (12px). That is fixed at the source now — see the control rule
+        in assets/styles/tailwind.input.css. With the trigger gone the lock is
+        unnecessary, so it is safe to remove (and the ordering here is
+        deliberate: fonts first, viewport second).
+
+        viewport-fit=cover is what makes env(safe-area-inset-*) resolve, which
+        keeps the navbar clear of the notch on an iPhone.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <!-- Matches the primary-600 navbar colour, so the status bar blends with
+         the app chrome when installed. -->
+    <meta name="theme-color" content="#059669">
     <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="shortcut icon" href="/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="PennyTrack" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link rel="manifest" href="/site.webmanifest" />
     <title>{% block title %}Penny-Track{% endblock %}</title>
     <!-- <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 128 128%22><text y=%221.2em%22 font-size=%2296%22>💰</text></svg>"> -->
@@ -40,29 +68,65 @@
                     }
                     return r;
                 });
-            }
+            },
+
+            // Run `fn` once the page is interactive, and again after every
+            // Turbo visit.
+            //
+            // This exists because Turbo Drive is active (it comes in through the
+            // importmap) and it changes the page lifecycle: it intercepts
+            // navigations and swaps <body>, so `DOMContentLoaded` fires exactly
+            // once per browser session while `turbo:load` fires after the first
+            // load *and* after every visit. A page script that only listens for
+            // DOMContentLoaded therefore silently stops running the second time
+            // you navigate to that page.
+            //
+            // Two details worth knowing:
+            //   * On the initial load both events can fire; the body-identity
+            //     guard makes the second a no-op.
+            //   * Turbo re-executes inline <body> scripts after a visit, so this
+            //     registers a fresh listener each time. The guard keeps that
+            //     from doing duplicate work.
+            ready: (fn) => {
+                let bootedBody = null;
+                const run = () => {
+                    if (bootedBody === document.body) return;
+                    bootedBody = document.body;
+                    fn();
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', run);
+                } else {
+                    // Script re-executed by Turbo: the body is already in place
+                    // and DOMContentLoaded will not fire again.
+                    run();
+                }
+                document.addEventListener('turbo:load', run);
+            },
         };
     </script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: { 50: '#ecfdf5', 100: '#d1fae5', 200: '#a7f3d0', 300: '#6ee7b7', 400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b' },
-                    }
-                }
-            }
-        }
-    </script>
+    <!--
+        Both CDN tags are gone (GUIDING-LIGHT §3.5). Tailwind used to arrive as
+        ~120KB of JavaScript that compiled CSS in the browser, and Chart.js from
+        jsDelivr; both were the worst thing in this app on a phone on cellular,
+        and both put script execution on this origin in the hands of a third
+        party — on a page that keeps the user's API key in localStorage.
+
+        Everything below now resolves through the importmap to files served from
+        this origin. `importmap('app')` pulls in Stimulus, Turbo, Chart.js and
+        the compiled Tailwind stylesheet in one go.
+
+        The `tailwind.config` block that used to sit here only ever configured
+        the CDN build; its `primary` palette has moved verbatim into
+        tailwind.config.js, where the precompiled build reads it.
+    -->
+    {{ importmap('app') }}
     <style>
         [x-cloak] { display: none !important; }
-        .tap-highlight-transparent { -webkit-tap-highlight-color: transparent; }
     </style>
     {% block stylesheets %}{% endblock %}
 </head>
-<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col tap-highlight-transparent">
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
     {% block navbar %}
     <nav class="bg-primary-600 text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -100,6 +164,29 @@
     </main>
 
     {% block javascripts %}{% endblock %}
+
+    <script>
+        /*
+         * Register the service worker (§3.3b). Without it the app is only
+         * *installable* — every launch still hits the network and a dropped
+         * connection is a blank page.
+         *
+         * Registered from the root scope so the worker can see the whole
+         * origin. It deliberately never caches HTML or anything under /api/;
+         * see public/sw.js for why.
+         *
+         * `serviceWorker` is undefined on plain HTTP (excluding localhost), so
+         * the guard is what keeps this from throwing on a non-TLS host.
+         */
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js').catch(() => {
+                    /* Registration failing is not fatal — the app works
+                       without it, it just is not installable-with-offline. */
+                });
+            });
+        }
+    </script>
 
     {% if app.request.hasPreviousSession or true %}
     <script>

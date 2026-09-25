@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Repository\ReceiptRepository;
+use DateTimeImmutable;
+use Exception;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -28,7 +30,7 @@ class DashboardController extends AbstractController
     #[Route('/api/dashboard/summary', name: 'api_dashboard_summary', methods: ['GET'])]
     public function summary(): JsonResponse
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $startOfMonth = $now->modify('first day of this month midnight');
         $startOfLastMonth = $now->modify('first day of last month midnight');
         $endOfLastMonth = $startOfMonth;
@@ -59,34 +61,34 @@ class DashboardController extends AbstractController
     public function spendingByCategory(Request $request): JsonResponse
     {
         // If explicit from/to are given, use them; otherwise fall back to months.
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
 
         if ($request->query->has('from') && $request->query->has('to')) {
             $from = $this->parseDateParam($request->query->get('from'));
-            $to   = $this->parseDateParam($request->query->get('to'));
+            $to = $this->parseDateParam($request->query->get('to'));
 
-            if ($from === null || $to === null) {
+            if (null === $from || null === $to) {
                 return new JsonResponse(
                     ['error' => "Invalid date range. 'from' and 'to' must be valid dates (e.g. 2025-01-01)."],
-                    Response::HTTP_BAD_REQUEST
+                    Response::HTTP_BAD_REQUEST,
                 );
             }
 
             if ($to < $from) {
                 return new JsonResponse(
                     ['error' => "Invalid date range. 'to' must not be before 'from'."],
-                    Response::HTTP_BAD_REQUEST
+                    Response::HTTP_BAD_REQUEST,
                 );
             }
         } else {
             $months = max(1, min(12, (int) $request->query->get('months', 1)));
-            $from = $now->modify("first day of -" . ($months - 1) . " months midnight");
-            $to   = $now;
+            $from = $now->modify('first day of -'.($months - 1).' months midnight');
+            $to = $now;
         }
 
         $data = $this->receiptRepository->getSpendingByCategory($from, $to);
 
-        return new JsonResponse(array_map(fn ($row) => [
+        return new JsonResponse(array_map(static fn ($row) => [
             'category' => $row['category'],
             'total' => (float) $row['total'],
         ], $data));
@@ -96,15 +98,15 @@ class DashboardController extends AbstractController
      * Safely parse a date query parameter, returning null for empty or
      * malformed input instead of throwing a 500.
      */
-    private function parseDateParam(?string $value): ?\DateTimeImmutable
+    private function parseDateParam(?string $value): ?DateTimeImmutable
     {
-        if ($value === null || trim($value) === '') {
+        if (null === $value || '' === trim($value)) {
             return null;
         }
 
         try {
-            return new \DateTimeImmutable($value);
-        } catch (\Exception) {
+            return new DateTimeImmutable($value);
+        } catch (Exception) {
             return null;
         }
     }
@@ -117,9 +119,9 @@ class DashboardController extends AbstractController
         $breakdown = $this->receiptRepository->getMonthlyCategoryBreakdown($months);
 
         // Build a complete list of months (including months with no spending)
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $monthLabels = [];
-        for ($i = $months - 1; $i >= 0; $i--) {
+        for ($i = $months - 1; $i >= 0; --$i) {
             $monthLabels[] = $now->modify("first day of -{$i} months midnight")->format('Y-m');
         }
 
@@ -171,7 +173,7 @@ class DashboardController extends AbstractController
     public function spendingOverTime(Request $request): JsonResponse
     {
         $days = max(7, min(365, (int) $request->query->get('days', 30)));
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $from = $now->modify("-{$days} days midnight");
 
         $data = $this->receiptRepository->getSpendingOverTime($from, $now);
@@ -201,16 +203,16 @@ class DashboardController extends AbstractController
     #[Route('/api/dashboard/top-businesses', name: 'api_dashboard_top_businesses', methods: ['GET'])]
     public function topBusinesses(Request $request): JsonResponse
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $from = $now->modify('first day of this month midnight');
 
         $rawLimit = (int) $request->query->get('limit', 5);
         $allowedLimits = [5, 10, 15, 25];
-        $limit = in_array($rawLimit, $allowedLimits, true) ? $rawLimit : 5;
+        $limit = \in_array($rawLimit, $allowedLimits, true) ? $rawLimit : 5;
 
         $data = $this->receiptRepository->getTopBusinesses($from, $now, $limit);
 
-        return new JsonResponse(array_map(fn ($row) => [
+        return new JsonResponse(array_map(static fn ($row) => [
             'business' => $row['business'],
             'total' => (float) $row['total'],
             'count' => (int) $row['count'],
@@ -220,7 +222,7 @@ class DashboardController extends AbstractController
     #[Route('/api/dashboard/insights', name: 'api_dashboard_insights', methods: ['GET'])]
     public function insights(): JsonResponse
     {
-        $now = new \DateTimeImmutable();
+        $now = new DateTimeImmutable();
         $startOfMonth = $now->modify('first day of this month midnight');
         $startOfLastMonth = $now->modify('first day of last month midnight');
         $startOfMonthsAgo = $now->modify('first day of 3 months ago midnight');
@@ -236,7 +238,7 @@ class DashboardController extends AbstractController
             if ($change > 20) {
                 $insights[] = [
                     'type' => 'warning',
-                    'message' => sprintf('You spent %.0f%% more than last month', $change),
+                    'message' => \sprintf('You spent %.0f%% more than last month', $change),
                 ];
             }
         }
@@ -245,21 +247,21 @@ class DashboardController extends AbstractController
         if (!empty($topBusinesses)) {
             $insights[] = [
                 'type' => 'info',
-                'message' => sprintf('Top spender this month: %s ($%.2f)', $topBusinesses[0]['business'], (float) $topBusinesses[0]['total']),
+                'message' => \sprintf('Top spender this month: %s ($%.2f)', $topBusinesses[0]['business'], (float) $topBusinesses[0]['total']),
             ];
         }
 
         // Spending velocity
-        //$dayOfMonth = (int) $now->format('j');
-        //$daysInMonth = (int) $now->format('t');
-        //if ($dayOfMonth > 1 && $thisMonthTotal > 0) {
+        // $dayOfMonth = (int) $now->format('j');
+        // $daysInMonth = (int) $now->format('t');
+        // if ($dayOfMonth > 1 && $thisMonthTotal > 0) {
         //    $dailyRate = $thisMonthTotal / $dayOfMonth;
         //    $projected = $dailyRate * $daysInMonth;
         //    $insights[] = [
         //        'type' => 'info',
         //        'message' => sprintf('On track to spend ~$%.2f this month', $projected),
         //    ];
-        //}
+        // }
 
         // Category anomalies
         $categoryAverages = $this->receiptRepository->getCategoryAverages($startOfMonthsAgo, $endOfLastMonth);
@@ -269,11 +271,11 @@ class DashboardController extends AbstractController
         $maxMonths = 1.0;
         foreach ($categoryAverages as $row) {
             $avgLookup[$row['category']] = [
-                'average_count' => (float)$row['average_count'],
-                'average'       => (float)$row['average'],
-                'months'        => (float)$row['months'],
+                'average_count' => (float) $row['average_count'],
+                'average' => (float) $row['average'],
+                'months' => (float) $row['months'],
             ];
-            $maxMonths = max($maxMonths, (float)$row['months']);
+            $maxMonths = max($maxMonths, (float) $row['months']);
         }
 
         $projectedMin = 0.0;
@@ -281,15 +283,15 @@ class DashboardController extends AbstractController
         $covered = [];
         foreach ($thisMonthByCategory as $row) {
             $cat = $row['category'];
-            $total = (float)$row['total'];
+            $total = (float) $row['total'];
             $covered[$cat] = true;
             // count and count can't be zero, otherwise there would be no results to report
-            if (isset($avgLookup[$cat]['average_count']) &&
-                $avgLookup[$cat]['average_count'] > $row['count']
+            if (isset($avgLookup[$cat]['average_count'])
+                && $avgLookup[$cat]['average_count'] > $row['count']
             ) {
                 // estimate how far we are through this month
                 // half expected transaction count
-                $byCount  = $row['count'] / ($avgLookup[$cat]['average_count']);
+                $byCount = $row['count'] / $avgLookup[$cat]['average_count'];
                 // half expected total amount
                 $byAmount = $total / ($avgLookup[$cat]['average_count'] * $avgLookup[$cat]['average']);
                 // cap projection to 100%
@@ -302,7 +304,7 @@ class DashboardController extends AbstractController
             }
         }
         foreach ($avgLookup as $cat => $row) {
-            if (! isset($covered[$cat])) {
+            if (!isset($covered[$cat])) {
                 // a category from the history, which has no spending in it yet
                 $projectedMin += $row['average_count'] * $row['average'] * ($avgLookup[$cat]['months'] / $maxMonths);
                 $projectedMax += $row['average_count'] * $row['average'] * ($avgLookup[$cat]['months'] / $maxMonths);
@@ -310,7 +312,7 @@ class DashboardController extends AbstractController
         }
         $insights[] = [
             'type' => 'info',
-            'message' => sprintf('On track to spend between $%.2f ~ $%.2f this month', $projectedMin, $projectedMax),
+            'message' => \sprintf('On track to spend between $%.2f ~ $%.2f this month', $projectedMin, $projectedMax),
         ];
 
         $highSpending = [];
@@ -320,14 +322,14 @@ class DashboardController extends AbstractController
             if (isset($avgLookup[$cat]['average']) && $avgLookup[$cat]['average'] > 0) {
                 $ratio = $total / ($avgLookup[$cat]['average'] * $avgLookup[$cat]['average_count'] * $avgLookup[$cat]['months'] / $maxMonths);
                 if ($ratio > 1.25) {
-                    $highSpending[] = sprintf('%s (%.0fx average)', $cat, $ratio);
+                    $highSpending[] = \sprintf('%s (%.0fx average)', $cat, $ratio);
                 }
             }
         }
         if (!empty($highSpending)) {
             $insights[] = [
                 'type' => 'warning',
-                'message' => 'Unusually high spending in ' . implode(' ● ', $highSpending),
+                'message' => 'Unusually high spending in '.implode(' ● ', $highSpending),
             ];
         }
 
@@ -342,7 +344,7 @@ class DashboardController extends AbstractController
         if (!empty($newCategories)) {
             $insights[] = [
                 'type' => 'info',
-                'message' => 'New category this month: ' . implode(' ● ', $newCategories),
+                'message' => 'New category this month: '.implode(' ● ', $newCategories),
             ];
         }
 

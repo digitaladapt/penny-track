@@ -31,6 +31,8 @@
 </div>
 
 <script>
+    /* Bound inside ready(): see the note in login.html.twig. */
+    window.PennyTrack.ready(() => {
     document.getElementById('setup-btn').addEventListener('click', async () => {
         const btn = document.getElementById('setup-btn');
         btn.disabled = true;
@@ -57,6 +59,7 @@
             btn.disabled = false;
             btn.textContent = 'Generate API Key';
         }
+    });
     });
 </script>
 {% endblock %}

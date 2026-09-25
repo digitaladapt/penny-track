@@ -46,7 +46,7 @@ class ApiKeyRepository extends ServiceEntityRepository
     public function findByKey(string $apiKey): ?ApiKey
     {
         foreach ($this->findAll() as $candidate) {
-            if ($candidate->getKeyHash() !== null && password_verify($apiKey, $candidate->getKeyHash())) {
+            if (null !== $candidate->getKeyHash() && password_verify($apiKey, $candidate->getKeyHash())) {
                 return $candidate;
             }
         }

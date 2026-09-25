@@ -25,6 +25,9 @@
 </div>
 
 <script>
+    /* Bound inside ready(): the page must survive a Turbo visit, and the
+       listeners below attach to elements Turbo may have just replaced. */
+    window.PennyTrack.ready(() => {
     document.getElementById('login-btn').addEventListener('click', async () => {
         const key = document.getElementById('api-key-input').value.trim();
         const btn = document.getElementById('login-btn');
@@ -67,6 +70,7 @@
 
     document.getElementById('api-key-input').addEventListener('keypress', (e) => {
         if (e.key === 'Enter') document.getElementById('login-btn').click();
+    });
     });
 </script>
 {% endblock %}

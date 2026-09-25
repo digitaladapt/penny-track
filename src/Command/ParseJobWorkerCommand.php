@@ -6,6 +6,8 @@ namespace App\Command;
 
 use App\Entity\ParseJob;
 use App\Repository\ParseJobRepository;
+use DateInterval;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -21,7 +23,7 @@ use Symfony\Component\Process\Process;
 )]
 class ParseJobWorkerCommand extends Command
 {
-    /** @var array<int, array{process: Process, job_id: int, started_at: \DateTimeImmutable}> */
+    /** @var array<int, array{process: Process, job_id: int, started_at: DateTimeImmutable}> */
     private array $runningJobs = [];
 
     public function __construct(
@@ -40,14 +42,14 @@ class ParseJobWorkerCommand extends Command
             's',
             InputOption::VALUE_OPTIONAL,
             'Seconds to sleep between polling cycles',
-            5
+            5,
         );
         $this->addOption(
             'max-runtime',
             null,
             InputOption::VALUE_OPTIONAL,
             'Maximum runtime in seconds before graceful exit (0 = unlimited)',
-            0
+            0,
         );
     }
 
@@ -59,23 +61,24 @@ class ParseJobWorkerCommand extends Command
         $startTime = time();
 
         $io->title('Parse Job Worker');
-        $io->text(sprintf(
+        $io->text(\sprintf(
             'Max background jobs: <comment>%d</comment> | LLM timeout: <comment>%ds</comment> | Poll interval: <comment>%ds</comment>',
             $this->maxBackgroundJobs,
             $this->llmWorkerTimeout,
-            $sleepSeconds
+            $sleepSeconds,
         ));
 
         $cycle = 0;
 
         while (true) {
-            $cycle++;
+            ++$cycle;
 
             // Check max runtime
             if ($maxRuntime > 0 && (time() - $startTime) >= $maxRuntime) {
                 $io->note('Max runtime reached, waiting for running jobs to finish...');
                 $this->waitForRunningJobs($io);
                 $io->success('Worker exiting after max runtime.');
+
                 return Command::SUCCESS;
             }
 
@@ -86,31 +89,31 @@ class ParseJobWorkerCommand extends Command
             $this->reapStaleJobs($io);
 
             // 3. Count active subprocesses
-            $activeCount = count($this->runningJobs);
+            $activeCount = \count($this->runningJobs);
 
             // 4. Spawn new jobs if under the limit
             while ($activeCount < $this->maxBackgroundJobs) {
                 $this->entityManager->clear();
                 $job = $this->parseJobRepository->claimNextPending();
 
-                if ($job === null) {
+                if (null === $job) {
                     break;
                 }
 
                 $this->spawnJob($job, $io);
-                $activeCount++;
+                ++$activeCount;
             }
 
-            if ($output->isVerbose() && $cycle % 12 === 0) {
+            if ($output->isVerbose() && 0 === $cycle % 12) {
                 // Every ~60 seconds (at 5s sleep), print a heartbeat
                 $pending = $this->parseJobRepository->countPending();
                 $processing = $this->parseJobRepository->countProcessing();
-                $io->text(sprintf(
+                $io->text(\sprintf(
                     '[%s] Heartbeat — active: %d, processing: %d, pending: %d',
                     date('Y-m-d H:i:s'),
-                    count($this->runningJobs),
+                    \count($this->runningJobs),
                     $processing,
-                    $pending
+                    $pending,
                 ));
             }
 
@@ -120,12 +123,12 @@ class ParseJobWorkerCommand extends Command
 
     private function spawnJob(ParseJob $job, SymfonyStyle $io): void
     {
-        $io->text(sprintf(
+        $io->text(\sprintf(
             '[%s] Spawning subprocess for job #%d (attempt %d/%d)',
             date('Y-m-d H:i:s'),
             $job->getId(),
             $job->getAttempts() + 1,
-            $job->getMaxAttempts()
+            $job->getMaxAttempts(),
         ));
 
         $process = new Process([
@@ -136,7 +139,7 @@ class ParseJobWorkerCommand extends Command
         ]);
 
         $projectDir = $this->getApplication()?->getKernel()->getProjectDir();
-        if ($projectDir !== null) {
+        if (null !== $projectDir) {
             $process->setWorkingDirectory($projectDir);
         }
 
@@ -147,7 +150,7 @@ class ParseJobWorkerCommand extends Command
         $this->runningJobs[] = [
             'process' => $process,
             'job_id' => $job->getId(),
-            'started_at' => new \DateTimeImmutable(),
+            'started_at' => new DateTimeImmutable(),
         ];
     }
 
@@ -158,16 +161,16 @@ class ParseJobWorkerCommand extends Command
         foreach ($this->runningJobs as $entry) {
             if (!$entry['process']->isRunning()) {
                 $exitCode = $entry['process']->getExitCode();
-                $io->text(sprintf(
+                $io->text(\sprintf(
                     '[%s] Job #%d subprocess exited with code %d',
                     date('Y-m-d H:i:s'),
                     $entry['job_id'],
-                    $exitCode
+                    $exitCode,
                 ));
 
-                if ($exitCode !== 0) {
+                if (0 !== $exitCode) {
                     // Subprocess failed — ensure the job isn't stuck in processing
-                    $this->markFailedIfStuck($entry['job_id'], 'Subprocess exited with code ' . $exitCode, $io);
+                    $this->markFailedIfStuck($entry['job_id'], 'Subprocess exited with code '.$exitCode, $io);
                 }
             } else {
                 $stillRunning[] = $entry;
@@ -180,7 +183,7 @@ class ParseJobWorkerCommand extends Command
     private function reapStaleJobs(SymfonyStyle $io): void
     {
         // Stale = processing for longer than LLM_TIMEOUT + 120s buffer
-        $threshold = new \DateInterval('PT' . ($this->llmWorkerTimeout + 120) . 'S');
+        $threshold = new DateInterval('PT'.($this->llmWorkerTimeout + 120).'S');
         $staleJobs = $this->parseJobRepository->findStaleProcessing($threshold);
 
         foreach ($staleJobs as $job) {
@@ -205,7 +208,7 @@ class ParseJobWorkerCommand extends Command
         $this->entityManager->clear();
         $job = $this->parseJobRepository->find($jobId);
 
-        if ($job === null || $job->getStatus() !== ParseJob::STATUS_PROCESSING) {
+        if (null === $job || ParseJob::STATUS_PROCESSING !== $job->getStatus()) {
             return;
         }
 
@@ -218,7 +221,7 @@ class ParseJobWorkerCommand extends Command
         $job->setLastError($error);
         $this->entityManager->flush();
 
-        $io->warning(sprintf('Job #%d: %s', $jobId, $error));
+        $io->warning(\sprintf('Job #%d: %s', $jobId, $error));
     }
 
     private function waitForRunningJobs(SymfonyStyle $io): void
@@ -228,10 +231,10 @@ class ParseJobWorkerCommand extends Command
             $this->reapStaleJobs($io);
 
             if (!empty($this->runningJobs)) {
-                $io->text(sprintf(
+                $io->text(\sprintf(
                     '[%s] Waiting for %d running job(s) to finish...',
                     date('Y-m-d H:i:s'),
-                    count($this->runningJobs)
+                    \count($this->runningJobs),
                 ));
                 sleep(5);
             }

@@ -9,10 +9,13 @@ services:
     expose:
       - 80
     environment:
-      APP_SECRET: ${APP_SECRET:-}
+      # `${VAR:?}` rather than `${VAR:-}`: an empty APP_SECRET is a silent
+      # security failure, not a convenience. Refuse to start, and name the
+      # variable (GUIDING-LIGHT §4.4).
+      APP_SECRET: ${APP_SECRET:?APP_SECRET is required — generate one with openssl rand -hex 32}
       DATABASE_URL: "sqlite:///%kernel.project_dir%/var/data/penny_track.db"
       LLM_API_ENDPOINT: ${LLM_API_ENDPOINT:-https://api.openai.com/v1/chat/completions}
-      LLM_API_KEY: ${LLM_API_KEY:-change-me}
+      LLM_API_KEY: ${LLM_API_KEY:?LLM_API_KEY is required — the LLM provider API key}
       LLM_MODEL: ${LLM_MODEL:-gpt-4o-mini}
       LLM_TIMEOUT: ${LLM_TIMEOUT:-10}
       MAX_BACKGROUND_JOBS: ${MAX_BACKGROUND_JOBS:-2}

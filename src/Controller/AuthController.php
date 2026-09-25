@@ -39,7 +39,7 @@ class AuthController extends AbstractController
         }
 
         $key = bin2hex(random_bytes(32));
-        $hash = password_hash($key, PASSWORD_BCRYPT);
+        $hash = password_hash($key, \PASSWORD_BCRYPT);
 
         $apiKey = new ApiKey();
         $apiKey->setKeyHash($hash);
@@ -63,13 +63,13 @@ class AuthController extends AbstractController
     public function verify(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        if (!is_array($data)) {
+        if (!\is_array($data)) {
             return new JsonResponse(['error' => 'Invalid JSON body'], Response::HTTP_BAD_REQUEST);
         }
         $providedKey = $data['api_key'] ?? '';
 
         $apiKeyEntity = $this->apiKeyRepository->findByKey((string) $providedKey);
-        if ($apiKeyEntity !== null) {
+        if (null !== $apiKeyEntity) {
             return new JsonResponse([
                 'valid' => true,
                 'read_only' => $apiKeyEntity->isReadOnly(),

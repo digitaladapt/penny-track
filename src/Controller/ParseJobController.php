@@ -7,6 +7,7 @@ namespace App\Controller;
 use App\Entity\ParseJob;
 use App\Entity\Receipt;
 use App\Repository\ParseJobRepository;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,6 +15,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Throwable;
 
 class ParseJobController extends AbstractController
 {
@@ -41,11 +43,11 @@ class ParseJobController extends AbstractController
             return new JsonResponse(['error' => 'Not found'], Response::HTTP_NOT_FOUND);
         }
 
-        if ($job->getStatus() === ParseJob::STATUS_PROCESSING) {
+        if (ParseJob::STATUS_PROCESSING === $job->getStatus()) {
             return new JsonResponse(['error' => 'Cannot retry a job currently processing'], Response::HTTP_CONFLICT);
         }
 
-        if ($job->getStatus() === ParseJob::STATUS_COMPLETED) {
+        if (ParseJob::STATUS_COMPLETED === $job->getStatus()) {
             return new JsonResponse(['error' => 'Cannot retry a completed job'], Response::HTTP_CONFLICT);
         }
 
@@ -64,7 +66,7 @@ class ParseJobController extends AbstractController
             return new JsonResponse(['error' => 'Not found'], Response::HTTP_NOT_FOUND);
         }
 
-        if ($job->getStatus() === ParseJob::STATUS_PROCESSING) {
+        if (ParseJob::STATUS_PROCESSING === $job->getStatus()) {
             return new JsonResponse(['error' => 'Cannot delete a job currently processing'], Response::HTTP_CONFLICT);
         }
 
@@ -82,12 +84,12 @@ class ParseJobController extends AbstractController
             return new JsonResponse(['error' => 'Not found'], Response::HTTP_NOT_FOUND);
         }
 
-        if ($job->getStatus() === ParseJob::STATUS_COMPLETED) {
+        if (ParseJob::STATUS_COMPLETED === $job->getStatus()) {
             return new JsonResponse(['error' => 'Job already completed'], Response::HTTP_CONFLICT);
         }
 
         $data = json_decode($request->getContent(), true);
-        if (!is_array($data)) {
+        if (!\is_array($data)) {
             return new JsonResponse(['error' => 'Invalid JSON body'], Response::HTTP_BAD_REQUEST);
         }
 
@@ -95,29 +97,30 @@ class ParseJobController extends AbstractController
         $receipt->setAmount(
             isset($data['amount']) && is_numeric($data['amount'])
                 ? number_format((float) $data['amount'], 2, '.', '')
-                : null
+                : null,
         );
         $receipt->setBusiness($data['business'] ?? null);
         $receipt->setCategory($data['category'] ?? null);
         $receipt->setLocation($data['location'] ?? null);
-        $receipt->setTags(is_array($data['tags'] ?? null) ? $data['tags'] : []);
+        $receipt->setTags(\is_array($data['tags'] ?? null) ? $data['tags'] : []);
         $receipt->setNotes($data['notes'] ?? $job->getRawText());
         $receipt->setRawInput($job->getRawText());
 
         if (!empty($data['created_at'])) {
             try {
-                $receipt->setCreatedAt(new \DateTimeImmutable($data['created_at']));
-            } catch (\Throwable) {
+                $receipt->setCreatedAt(new DateTimeImmutable($data['created_at']));
+            } catch (Throwable) {
                 // keep default
             }
         }
 
         $errors = $validator->validate($receipt);
-        if (count($errors) > 0) {
+        if (\count($errors) > 0) {
             $messages = [];
             foreach ($errors as $error) {
                 $messages[$error->getPropertyPath()] = $error->getMessage();
             }
+
             return new JsonResponse(['errors' => $messages], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
 
@@ -125,7 +128,7 @@ class ParseJobController extends AbstractController
 
         $job->setReceipt($receipt);
         $job->setStatus(ParseJob::STATUS_COMPLETED);
-        $job->setCompletedAt(new \DateTimeImmutable());
+        $job->setCompletedAt(new DateTimeImmutable());
         $job->setLastError(null);
 
         $this->entityManager->flush();

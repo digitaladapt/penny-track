@@ -6,6 +6,7 @@ namespace App\Tests\Functional\Controller;
 
 use App\Entity\ApiKey;
 use App\Entity\Receipt;
+use DateTimeImmutable;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
@@ -28,12 +29,12 @@ class DashboardControllerTest extends WebTestCase
 
         $this->apiKey = bin2hex(random_bytes(32));
         $apiKeyEntity = new ApiKey();
-        $apiKeyEntity->setKeyHash(password_hash($this->apiKey, PASSWORD_BCRYPT));
+        $apiKeyEntity->setKeyHash(password_hash($this->apiKey, \PASSWORD_BCRYPT));
         $this->em->persist($apiKeyEntity);
         $this->em->flush();
     }
 
-    public function testSummary(): void
+    public function test_summary(): void
     {
         $receipt = new Receipt();
         $receipt->setAmount('100.00');
@@ -50,7 +51,7 @@ class DashboardControllerTest extends WebTestCase
         $this->assertArrayHasKey('average_transaction', $data);
     }
 
-    public function testSpendingByCategory(): void
+    public function test_spending_by_category(): void
     {
         $r1 = new Receipt();
         $r1->setAmount('50.00');
@@ -72,13 +73,13 @@ class DashboardControllerTest extends WebTestCase
         $this->assertCount(2, $data);
     }
 
-    public function testSpendingByCategoryWithValidFromTo(): void
+    public function test_spending_by_category_with_valid_from_to(): void
     {
         $r = new Receipt();
         $r->setAmount('42.00');
         $r->setBusiness('A');
         $r->setCategory('Food');
-        $r->setCreatedAt(new \DateTimeImmutable('2025-06-15 12:00:00'));
+        $r->setCreatedAt(new DateTimeImmutable('2025-06-15 12:00:00'));
         $this->em->persist($r);
         $this->em->flush();
 
@@ -87,7 +88,7 @@ class DashboardControllerTest extends WebTestCase
             '/api/dashboard/spending-by-category?from=2025-01-01&to=2025-12-31',
             [],
             [],
-            ['HTTP_X_API_KEY' => $this->apiKey]
+            ['HTTP_X_API_KEY' => $this->apiKey],
         );
 
         $this->assertResponseIsSuccessful();
@@ -98,7 +99,7 @@ class DashboardControllerTest extends WebTestCase
     }
 
     #[\PHPUnit\Framework\Attributes\DataProvider('invalidDateRangeProvider')]
-    public function testSpendingByCategoryRejectsInvalidDateRange(string $query): void
+    public function test_spending_by_category_rejects_invalid_date_range(string $query): void
     {
         $this->client->request('GET', "/api/dashboard/spending-by-category?{$query}", [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
 
@@ -121,7 +122,7 @@ class DashboardControllerTest extends WebTestCase
         ];
     }
 
-    public function testInsights(): void
+    public function test_insights(): void
     {
         $this->client->request('GET', '/api/dashboard/insights', [], [], ['HTTP_X_API_KEY' => $this->apiKey]);
 
@@ -130,7 +131,7 @@ class DashboardControllerTest extends WebTestCase
         $this->assertIsArray($data);
     }
 
-    public function testDashboardPageRenders(): void
+    public function test_dashboard_page_renders(): void
     {
         $this->client->request('GET', '/');
 
