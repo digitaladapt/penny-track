@@ -1,3 +1,7 @@
+# Tests - ensure code quality, via the shared workflow.
+#
+# Checks include: PHPStan, PHPUnit, and PHP-CS-Fixer.
+
 name: Tests
 
 on:
@@ -14,51 +18,26 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    uses: private/ci/.gitea/workflows/php-test.yaml@v1
+    with:
+      php-version: '8.5'
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      # profiles defines what to test:
+      # * web-app:      full test suite (default)
+      # * auth-gateway: skip template check
+      # * api-gateway:  skip interface checks
+      profile: web-app
 
-      - name: Setup PHP
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.4'
-          extensions: ctype, iconv, pdo, pdo_sqlite, mbstring, xml, curl
-          coverage: none
-          tools: composer:v2
+      # coverage defines how to check test-coverage:
+      # * pcov: recommended (default)
+      # * xdebug
+      coverage: 'pcov'
+      # 0-100 percentage of test-coverage required
+      coverage-min: '50'
 
-      # Authenticate to GitHub to raise API rate limit from 60 → 5,000 req/hour.
-      # Composer downloads packages from api.github.com; without auth, the 143
-      # GitHub-hosted packages in composer.lock exceed the 60 req/hour limit.
-      - name: Configure GitHub OAuth token
-        env:
-          GITHUB_TOKEN: ${{ secrets.SYNC_GITHUB_TOKEN }}
-        run: composer config --global github-oauth.github.com "$GITHUB_TOKEN"
+      # does failing our "conformance" check make the test suite fail
+      conformance-blocking: false
 
-      - name: Validate composer.json
-        run: composer validate --strict --no-check-publish
-
-      - name: Get composer cache directory
-        id: composer-cache
-        run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-
-      - name: Cache composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: ${{ steps.composer-cache.outputs.dir }}
-          key: ${{ runner.os }}-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: ${{ runner.os }}-composer-
-
-      - name: Create .env from .env.test
-        run: cp .env.test .env
-
-      - name: Install dependencies
-        run: composer install --no-interaction --prefer-dist
-
-      - name: Run php-cs-fixer
-        run: vendor/bin/php-cs-fixer fix --dry-run --diff
-
-      - name: Run tests
-        run: vendor/bin/phpunit --configuration phpunit.xml.dist
+    secrets:
+      # github token so composer can download dependencies
+      SYNC_GITHUB_TOKEN: ${{ secrets.SYNC_GITHUB_TOKEN }}
