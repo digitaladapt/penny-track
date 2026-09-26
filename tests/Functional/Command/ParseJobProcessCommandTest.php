@@ -141,8 +141,10 @@ class ParseJobProcessCommandTest extends KernelTestCase
 
         $receipt = $this->reload($job)->getReceipt();
         $this->assertNotNull($receipt);
-        $this->assertSame('2025-06-01', $receipt->getCreatedAt()?->format('Y-m-d'));
-        $this->assertNotSame('00:00:00', $receipt->getCreatedAt()?->format('H:i:s'));
+        $createdAt = $receipt->getCreatedAt();
+        $this->assertNotNull($createdAt);
+        $this->assertSame('2025-06-01', $createdAt->format('Y-m-d'));
+        $this->assertNotSame('00:00:00', $createdAt->format('H:i:s'));
     }
 
     public function test_llm_failure_marks_job_failed_when_attempts_are_exhausted(): void

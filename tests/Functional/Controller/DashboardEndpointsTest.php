@@ -19,9 +19,9 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
  */
 class DashboardEndpointsTest extends WebTestCase
 {
-    private KernelBrowser $client;
-    private string $apiKey;
-    private EntityManagerInterface $em;
+    private KernelBrowser $client; // @phpstan-ignore property.uninitialized (assigned in setUp)
+    private string $apiKey; // @phpstan-ignore property.uninitialized (assigned in setUp)
+    private EntityManagerInterface $em; // @phpstan-ignore property.uninitialized (assigned in setUp)
 
     #[Override]
     protected function setUp(): void

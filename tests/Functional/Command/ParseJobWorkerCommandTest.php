@@ -24,9 +24,9 @@ use Symfony\Component\Console\Tester\CommandTester;
  */
 class ParseJobWorkerCommandTest extends KernelTestCase
 {
-    private string $stubDir;
-    private string|false $originalPath;
-    private ?string $originalEnvPath;
+    private string $stubDir; // @phpstan-ignore property.uninitialized (assigned in setUp)
+    private string|false $originalPath; // @phpstan-ignore property.uninitialized (assigned in setUp)
+    private ?string $originalEnvPath; // @phpstan-ignore property.uninitialized (assigned in setUp)
 
     #[Override]
     protected function setUp(): void

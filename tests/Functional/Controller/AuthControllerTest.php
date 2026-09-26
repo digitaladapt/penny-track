@@ -13,8 +13,8 @@ use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 
 class AuthControllerTest extends WebTestCase
 {
-    private KernelBrowser $client;
-    private EntityManagerInterface $em;
+    private KernelBrowser $client; // @phpstan-ignore property.uninitialized (assigned in setUp)
+    private EntityManagerInterface $em; // @phpstan-ignore property.uninitialized (assigned in setUp)
 
     #[Override]
     protected function setUp(): void
