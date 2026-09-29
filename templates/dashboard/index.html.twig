@@ -413,12 +413,22 @@
      * PennyTrack.ready() rather than running immediately, for two reasons:
      *
      *   1. This is a CLASSIC inline script, so it runs during HTML parsing.
-     *      Chart.js now arrives through `{{ importmap('app') }}`, which is a
-     *      MODULE and therefore deferred — `window.Chart` would still be
-     *      undefined here. Ready fires after the deferred scripts have run.
+     *      Chart.js now arrives through the importmap('app') call in
+     *      base.html.twig, which emits a MODULE and is therefore deferred —
+     *      `window.Chart` would still be undefined here. Ready fires after the
+     *      deferred scripts have run.
      *   2. Turbo Drive is active, so a plain DOMContentLoaded listener would
      *      only ever fire on the first visit to this page, not on subsequent
      *      ones.
+     *
+     * Do NOT write Twig delimiters inside this script, not even in a comment
+     * like this one. Twig has no idea it is inside a script element: it
+     * expands them wherever it finds them, and the importmap it renders
+     * carries a literal closing script tag of its own. That tag ends this
+     * element early, everything after it renders as visible page text, and the
+     * remainder of the script is never parsed — which is exactly how the
+     * dashboard lost its charts once already. Name the function in prose
+     * instead, as done above.
      */
     window.PennyTrack.ready(() => {
         // pull from local-storage and update selector on page

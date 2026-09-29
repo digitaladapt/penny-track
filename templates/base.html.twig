@@ -120,6 +120,22 @@
         the CDN build; its `primary` palette has moved verbatim into
         tailwind.config.js, where the precompiled build reads it.
     -->
+    <!--
+        Tailwind, linked as a real stylesheet.
+
+        The stylesheet used to arrive as a side effect of assets/app.js doing
+        `import './styles/tailwind.css'`. That works, but it costs a
+        Content-Security-Policy exemption: AssetMapper renders a JS-side import
+        of a CSS file as an empty `data:application/javascript,` module in the
+        importmap, and `script-src 'self'` blocks data: URLs. The CSS import is
+        static, so the blocked module takes the whole graph down with it —
+        app.js, Stimulus, Turbo and Chart.js all fail to load, and quietly,
+        because the page itself still returns 200.
+
+        Linking it here instead keeps the policy strict and gets the CSS onto
+        the page without routing it through JavaScript.
+    -->
+    <link rel="stylesheet" href="{{ asset('styles/tailwind.css') }}">
     {{ importmap('app') }}
     <style>
         [x-cloak] { display: none !important; }
