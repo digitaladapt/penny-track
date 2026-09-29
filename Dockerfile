@@ -30,6 +30,20 @@ ENV APP_ENV=prod
 RUN composer dump-autoload --no-dev --classmap-authoritative \
     && composer run-script --no-dev post-install-cmd
 
+# Compile the AssetMapper output into public/assets/.
+#
+# This MUST run after `importmap:install` (part of post-install-cmd above,
+# which downloads the vendor packages into assets/vendor/), and it must run
+# here rather than at container start: the compiled files carry a build hash
+# per asset, and the templates resolve them through the manifest written by
+# this command.
+#
+# Both assets/vendor/ and public/assets/ are excluded via .dockerignore, so
+# nothing here survives from the build context — without this step the image
+# ships a manifest-free public/ and every /assets/* request 404s: no Tailwind,
+# no Stimulus/Turbo, no Chart.js.
+RUN php bin/console asset-map:compile
+
 # ── Stage 2: Runtime ───────────────────────────────────────────────
 FROM dunglas/frankenphp:1-php8.5-trixie AS app
 
