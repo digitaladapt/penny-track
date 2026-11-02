@@ -29,7 +29,7 @@
     </div>
 
     <!-- Manual Form -->
-    <form id="manual-form" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
+    <form id="manual-form" data-turbo="false" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
@@ -161,8 +161,14 @@
     const saveBtn = document.getElementById('save-receipt-btn');
     const saveBtnOriginalText = saveBtn.textContent;
 
+    // Register in capture phase so we fire before Turbo's FormSubmitObserver
+    // (which re-adds its bubble listener at the tail of the document queue).
+    // This also prevents Turbo from intercepting the submission when it
+    // happens to run after our listener in the bubble phase.
     manualForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        e.stopImmediatePropagation();
+
         const form = e.target;
         const status = document.getElementById('form-status');
         const fd = new FormData(form);
@@ -211,7 +217,7 @@
             saveBtn.disabled = false;
             saveBtn.textContent = saveBtnOriginalText;
         }
-    });
+    }, true);
 
     // Pre-fill datetime-local with current local time
     function setDefaultDateTime() {
